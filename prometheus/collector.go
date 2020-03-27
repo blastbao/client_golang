@@ -25,6 +25,7 @@ package prometheus
 // (i.e. collection of multiple instances of the same Metric but with different
 // label values) like GaugeVec or SummaryVec, and the ExpvarCollector.
 type Collector interface {
+
 	// Describe sends the super-set of all possible descriptors of metrics
 	// collected by this Collector to the provided channel and returns once
 	// the last descriptor has been sent. The sent descriptors fulfill the
@@ -46,7 +47,20 @@ type Collector interface {
 	// If a Collector encounters an error while executing this method, it
 	// must send an invalid descriptor (created with NewInvalidDesc) to
 	// signal the error to the registry.
+
+
+
+
+	// 用于传递所有可能的指标的定义描述符
+	// 可以在程序运行期间添加新的描述，收集新的指标信息
+	// 重复的描述符将被忽略。两个不同的Collector不要设置相同的描述符
+
 	Describe(chan<- *Desc)
+
+
+
+
+
 	// Collect is called by the Prometheus registry when collecting
 	// metrics. The implementation sends each collected metric via the
 	// provided channel and returns once the last metric has been sent. The

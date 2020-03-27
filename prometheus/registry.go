@@ -25,13 +25,13 @@ import (
 	"sync"
 	"unicode/utf8"
 
-	"github.com/cespare/xxhash/v2"
+	"github.com/cespare/xxhash"
 	"github.com/golang/protobuf/proto"
 	"github.com/prometheus/common/expfmt"
 
 	dto "github.com/prometheus/client_model/go"
 
-	"github.com/prometheus/client_golang/prometheus/internal"
+	"github.com/blastbao/client_golang/prometheus/internal"
 )
 
 const (
@@ -247,6 +247,9 @@ func (errs MultiError) MaybeUnwrap() error {
 		return errs
 	}
 }
+
+
+
 
 // Registry registers Prometheus collectors, collects their metrics, and gathers
 // them into MetricFamilies for exposition. It implements both Registerer and
@@ -693,26 +696,31 @@ func processMetric(
 // inconsistent Metrics are skipped (first occurrence in slice order wins) and
 // reported in the returned error.
 //
-// Gatherers can be used to merge the Gather results from multiple
-// Registries. It also provides a way to directly inject existing MetricFamily
-// protobufs into the gathering by creating a custom Gatherer with a Gather
-// method that simply returns the existing MetricFamily protobufs. Note that no
-// registration is involved (in contrast to Collector registration), so
-// obviously registration-time checks cannot happen. Any inconsistencies between
-// the gathered MetricFamilies are reported as errors by the Gather method, and
-// inconsistent Metrics are dropped. Invalid parts of the MetricFamilies
+// Gatherers can be used to merge the Gather results from multiple Registries.
+// It also provides a way to directly inject existing MetricFamily protobufs into
+// the gathering by creating a custom Gatherer with a Gather method that simply
+// returns the existing MetricFamily protobufs.
+//
+// Note that no registration is involved (in contrast to Collector registration),
+// so obviously registration-time checks cannot happen. Any inconsistencies
+// between the gathered MetricFamilies are reported as errors by the Gather method,
+// and inconsistent Metrics are dropped. Invalid parts of the MetricFamilies
 // (e.g. syntactically invalid metric or label names) will go undetected.
 type Gatherers []Gatherer
 
 // Gather implements Gatherer.
 func (gs Gatherers) Gather() ([]*dto.MetricFamily, error) {
+
 	var (
+		// 用于存储来自多个 gatherer 的 []*metricFamily 的聚合后数据，[mfName]=> &dto.MetricFamily{ Metric: ... }
 		metricFamiliesByName = map[string]*dto.MetricFamily{}
 		metricHashes         = map[uint64]struct{}{}
 		errs                 MultiError // The collected errors to return in the end.
 	)
 
 	for i, g := range gs {
+
+		// 取出 g 的 metricFamilies
 		mfs, err := g.Gather()
 		if err != nil {
 			if multiErr, ok := err.(MultiError); ok {
@@ -723,55 +731,70 @@ func (gs Gatherers) Gather() ([]*dto.MetricFamily, error) {
 				errs = append(errs, fmt.Errorf("[from Gatherer #%d] %s", i+1, err))
 			}
 		}
+
+		// 把 metricFamilies 中每个 metricFamily 都聚合存储到全局变量 metricFamiliesByName 上，
+		// 注：PushGateway 上有相同的聚合逻辑。
 		for _, mf := range mfs {
+
 			existingMF, exists := metricFamiliesByName[mf.GetName()]
 			if exists {
 				if existingMF.GetHelp() != mf.GetHelp() {
-					errs = append(errs, fmt.Errorf(
-						"gathered metric family %s has help %q but should have %q",
-						mf.GetName(), mf.GetHelp(), existingMF.GetHelp(),
-					))
+					errs = append(errs, fmt.Errorf("gathered metric family %s has help %q but should have %q", mf.GetName(), mf.GetHelp(), existingMF.GetHelp()))
 					continue
 				}
 				if existingMF.GetType() != mf.GetType() {
-					errs = append(errs, fmt.Errorf(
-						"gathered metric family %s has type %s but should have %s",
-						mf.GetName(), mf.GetType(), existingMF.GetType(),
-					))
+					errs = append(errs, fmt.Errorf("gathered metric family %s has type %s but should have %s", mf.GetName(), mf.GetType(), existingMF.GetType(), ))
 					continue
 				}
 			} else {
+
 				existingMF = &dto.MetricFamily{}
 				existingMF.Name = mf.Name
 				existingMF.Help = mf.Help
 				existingMF.Type = mf.Type
+
+
 				if err := checkSuffixCollisions(existingMF, metricFamiliesByName); err != nil {
 					errs = append(errs, err)
 					continue
 				}
+
 				metricFamiliesByName[mf.GetName()] = existingMF
 			}
+
+			// 聚合操作：将 mf.Metric 追加到 existingMF.Metric 中
 			for _, m := range mf.Metric {
+
+				//
 				if err := checkMetricConsistency(existingMF, m, metricHashes); err != nil {
 					errs = append(errs, err)
 					continue
 				}
+
 				existingMF.Metric = append(existingMF.Metric, m)
 			}
 		}
 	}
+
+	// 将聚合结果按 mfName 排序后返回
 	return internal.NormalizeMetricFamilies(metricFamiliesByName), errs.MaybeUnwrap()
 }
+
 
 // checkSuffixCollisions checks for collisions with the “magic” suffixes the
 // Prometheus text format and the internal metric representation of the
 // Prometheus server add while flattening Summaries and Histograms.
 func checkSuffixCollisions(mf *dto.MetricFamily, mfs map[string]*dto.MetricFamily) error {
+
+
 	var (
 		newName              = mf.GetName()
 		newType              = mf.GetType()
 		newNameWithoutSuffix = ""
 	)
+
+
+
 	switch {
 	case strings.HasSuffix(newName, "_count"):
 		newNameWithoutSuffix = newName[:len(newName)-6]
@@ -780,107 +803,107 @@ func checkSuffixCollisions(mf *dto.MetricFamily, mfs map[string]*dto.MetricFamil
 	case strings.HasSuffix(newName, "_bucket"):
 		newNameWithoutSuffix = newName[:len(newName)-7]
 	}
+
+
+
 	if newNameWithoutSuffix != "" {
+
 		if existingMF, ok := mfs[newNameWithoutSuffix]; ok {
 			switch existingMF.GetType() {
 			case dto.MetricType_SUMMARY:
 				if !strings.HasSuffix(newName, "_bucket") {
-					return fmt.Errorf(
-						"collected metric named %q collides with previously collected summary named %q",
-						newName, newNameWithoutSuffix,
-					)
+					return fmt.Errorf("collected metric named %q collides with previously collected summary named %q", newName, newNameWithoutSuffix)
 				}
 			case dto.MetricType_HISTOGRAM:
-				return fmt.Errorf(
-					"collected metric named %q collides with previously collected histogram named %q",
-					newName, newNameWithoutSuffix,
-				)
+				return fmt.Errorf("collected metric named %q collides with previously collected histogram named %q", newName, newNameWithoutSuffix)
 			}
 		}
+
 	}
+
+
+
 	if newType == dto.MetricType_SUMMARY || newType == dto.MetricType_HISTOGRAM {
 		if _, ok := mfs[newName+"_count"]; ok {
-			return fmt.Errorf(
-				"collected histogram or summary named %q collides with previously collected metric named %q",
-				newName, newName+"_count",
-			)
+			return fmt.Errorf("collected histogram or summary named %q collides with previously collected metric named %q", newName, newName+"_count", )
 		}
 		if _, ok := mfs[newName+"_sum"]; ok {
-			return fmt.Errorf(
-				"collected histogram or summary named %q collides with previously collected metric named %q",
-				newName, newName+"_sum",
-			)
+			return fmt.Errorf("collected histogram or summary named %q collides with previously collected metric named %q", newName, newName+"_sum", )
 		}
 	}
+
+
 	if newType == dto.MetricType_HISTOGRAM {
 		if _, ok := mfs[newName+"_bucket"]; ok {
-			return fmt.Errorf(
-				"collected histogram named %q collides with previously collected metric named %q",
-				newName, newName+"_bucket",
-			)
+			return fmt.Errorf("collected histogram named %q collides with previously collected metric named %q", newName, newName+"_bucket", )
 		}
 	}
+
 	return nil
 }
 
-// checkMetricConsistency checks if the provided Metric is consistent with the
-// provided MetricFamily. It also hashes the Metric labels and the MetricFamily
-// name. If the resulting hash is already in the provided metricHashes, an error
-// is returned. If not, it is added to metricHashes.
+// checkMetricConsistency checks if the provided Metric is consistent with
+// the provided MetricFamily.
+//
+// It also hashes the Metric labels and the MetricFamily name.
+//
+// If the resulting hash is already in the provided metricHashes,
+// an error is returned. If not, it is added to metricHashes.
+//
+//
 func checkMetricConsistency(
 	metricFamily *dto.MetricFamily,
 	dtoMetric *dto.Metric,
 	metricHashes map[uint64]struct{},
 ) error {
+
 	name := metricFamily.GetName()
 
-	// Type consistency with metric family.
-	if metricFamily.GetType() == dto.MetricType_GAUGE && dtoMetric.Gauge == nil ||
-		metricFamily.GetType() == dto.MetricType_COUNTER && dtoMetric.Counter == nil ||
-		metricFamily.GetType() == dto.MetricType_SUMMARY && dtoMetric.Summary == nil ||
-		metricFamily.GetType() == dto.MetricType_HISTOGRAM && dtoMetric.Histogram == nil ||
-		metricFamily.GetType() == dto.MetricType_UNTYPED && dtoMetric.Untyped == nil {
-		return fmt.Errorf(
-			"collected metric %q { %s} is not a %s",
-			name, dtoMetric, metricFamily.GetType(),
-		)
+	// 检查 metric 类型是否一致
+
+	// Metric type consistency with metric family.
+	if  metricFamily.GetType() == dto.MetricType_GAUGE     && dtoMetric.Gauge 		== nil 		||
+		metricFamily.GetType() == dto.MetricType_COUNTER   && dtoMetric.Counter 	== nil 		||
+		metricFamily.GetType() == dto.MetricType_SUMMARY   && dtoMetric.Summary 	== nil 		||
+		metricFamily.GetType() == dto.MetricType_HISTOGRAM && dtoMetric.Histogram 	== nil 		||
+		metricFamily.GetType() == dto.MetricType_UNTYPED   && dtoMetric.Untyped 	== nil {
+
+		return fmt.Errorf("collected metric %q { %s} is not a %s", name, dtoMetric, metricFamily.GetType(), )
 	}
 
+	// 检查 labels 是否合法
 	previousLabelName := ""
 	for _, labelPair := range dtoMetric.GetLabel() {
+
 		labelName := labelPair.GetName()
+
+		// 如果连续的两个 lable name 相同，意味着出现同名 label，报错
 		if labelName == previousLabelName {
-			return fmt.Errorf(
-				"collected metric %q { %s} has two or more labels with the same name: %s",
-				name, dtoMetric, labelName,
-			)
+			return fmt.Errorf("collected metric %q { %s} has two or more labels with the same name: %s", name, dtoMetric, labelName, )
 		}
+
+		// 检查 label name 是否合法， 1. 合法字符串 2. 不能以 __ 开头
 		if !checkLabelName(labelName) {
-			return fmt.Errorf(
-				"collected metric %q { %s} has a label with an invalid name: %s",
-				name, dtoMetric, labelName,
-			)
+			return fmt.Errorf("collected metric %q { %s} has a label with an invalid name: %s", name, dtoMetric, labelName, )
 		}
+
+		// ...
 		if dtoMetric.Summary != nil && labelName == quantileLabel {
-			return fmt.Errorf(
-				"collected metric %q { %s} must not have an explicit %q label",
-				name, dtoMetric, quantileLabel,
-			)
+			return fmt.Errorf("collected metric %q { %s} must not have an explicit %q label", name, dtoMetric, quantileLabel, )
 		}
+
+		// 检查 label value 是否是 utf8 编码
 		if !utf8.ValidString(labelPair.GetValue()) {
-			return fmt.Errorf(
-				"collected metric %q { %s} has a label named %q whose value is not utf8: %#v",
-				name, dtoMetric, labelName, labelPair.GetValue())
+			return fmt.Errorf("collected metric %q { %s} has a label named %q whose value is not utf8: %#v", name, dtoMetric, labelName, labelPair.GetValue())
 		}
+
 		previousLabelName = labelName
 	}
 
-	// Is the metric unique (i.e. no other metric with the same name and the same labels)?
-	h := xxhash.New()
-	h.WriteString(name)
-	h.Write(separatorByteSlice)
-	// Make sure label pairs are sorted. We depend on it for the consistency
-	// check.
+
+	// 检查 labels 是否已排序，顺序会影响后续 hash 值计算
+
+	// Make sure label pairs are sorted. We depend on it for the consistency check.
 	if !sort.IsSorted(labelPairSorter(dtoMetric.Label)) {
 		// We cannot sort dtoMetric.Label in place as it is immutable by contract.
 		copiedLabels := make([]*dto.LabelPair, len(dtoMetric.Label))
@@ -888,6 +911,13 @@ func checkMetricConsistency(
 		sort.Sort(labelPairSorter(copiedLabels))
 		dtoMetric.Label = copiedLabels
 	}
+
+	// 计算 mfName + labels 对应的 hash 值
+
+	// Is the metric unique (i.e. no other metric with the same name and the same labels)?
+	h := xxhash.New()
+	h.WriteString(name)
+	h.Write(separatorByteSlice)
 	for _, lp := range dtoMetric.Label {
 		h.WriteString(lp.GetName())
 		h.Write(separatorByteSlice)
@@ -895,13 +925,16 @@ func checkMetricConsistency(
 		h.Write(separatorByteSlice)
 	}
 	hSum := h.Sum64()
+
+
+	// 如果 hash(mfName + labels) 已经存在，意味着当前 metric 已经收集，报错
 	if _, exists := metricHashes[hSum]; exists {
-		return fmt.Errorf(
-			"collected metric %q { %s} was collected before with the same name and label values",
-			name, dtoMetric,
-		)
+		return fmt.Errorf("collected metric %q { %s} was collected before with the same name and label values", name, dtoMetric, )
 	}
+
+	// 保存
 	metricHashes[hSum] = struct{}{}
+
 	return nil
 }
 
@@ -910,37 +943,29 @@ func checkDescConsistency(
 	dtoMetric *dto.Metric,
 	desc *Desc,
 ) error {
+
+
 	// Desc help consistency with metric family help.
 	if metricFamily.GetHelp() != desc.help {
-		return fmt.Errorf(
-			"collected metric %s %s has help %q but should have %q",
-			metricFamily.GetName(), dtoMetric, metricFamily.GetHelp(), desc.help,
-		)
+		return fmt.Errorf("collected metric %s %s has help %q but should have %q", metricFamily.GetName(), dtoMetric, metricFamily.GetHelp(), desc.help, )
 	}
 
 	// Is the desc consistent with the content of the metric?
 	lpsFromDesc := make([]*dto.LabelPair, len(desc.constLabelPairs), len(dtoMetric.Label))
 	copy(lpsFromDesc, desc.constLabelPairs)
 	for _, l := range desc.variableLabels {
-		lpsFromDesc = append(lpsFromDesc, &dto.LabelPair{
-			Name: proto.String(l),
-		})
+		lpsFromDesc = append(lpsFromDesc, &dto.LabelPair{Name: proto.String(l)})
 	}
+
 	if len(lpsFromDesc) != len(dtoMetric.Label) {
-		return fmt.Errorf(
-			"labels in collected metric %s %s are inconsistent with descriptor %s",
-			metricFamily.GetName(), dtoMetric, desc,
-		)
+		return fmt.Errorf("labels in collected metric %s %s are inconsistent with descriptor %s", metricFamily.GetName(), dtoMetric, desc, )
 	}
 	sort.Sort(labelPairSorter(lpsFromDesc))
 	for i, lpFromDesc := range lpsFromDesc {
 		lpFromMetric := dtoMetric.Label[i]
 		if lpFromDesc.GetName() != lpFromMetric.GetName() ||
-			lpFromDesc.Value != nil && lpFromDesc.GetValue() != lpFromMetric.GetValue() {
-			return fmt.Errorf(
-				"labels in collected metric %s %s are inconsistent with descriptor %s",
-				metricFamily.GetName(), dtoMetric, desc,
-			)
+		  (lpFromDesc.Value != nil && lpFromDesc.GetValue() != lpFromMetric.GetValue()) {
+			return fmt.Errorf("labels in collected metric %s %s are inconsistent with descriptor %s", metricFamily.GetName(), dtoMetric, desc, )
 		}
 	}
 	return nil

@@ -35,50 +35,71 @@ type Gauge interface {
 
 	// Set sets the Gauge to an arbitrary value.
 	Set(float64)
-	// Inc increments the Gauge by 1. Use Add to increment it by arbitrary
-	// values.
+
+	// Inc increments the Gauge by 1.
+	// Use Add to increment it by arbitrary values.
 	Inc()
-	// Dec decrements the Gauge by 1. Use Sub to decrement it by arbitrary
-	// values.
+
+	// Dec decrements the Gauge by 1.
+	// Use Sub to decrement it by arbitrary values.
 	Dec()
-	// Add adds the given value to the Gauge. (The value can be negative,
-	// resulting in a decrease of the Gauge.)
+
+	// Add adds the given value to the Gauge.
+	// (The value can be negative, resulting in a decrease of the Gauge.)
 	Add(float64)
-	// Sub subtracts the given value from the Gauge. (The value can be
-	// negative, resulting in an increase of the Gauge.)
+
+	// Sub subtracts the given value from the Gauge.
+	// (The value can be negative, resulting in an increase of the Gauge.)
 	Sub(float64)
 
 	// SetToCurrentTime sets the Gauge to the current Unix time in seconds.
 	SetToCurrentTime()
+
 }
 
-// GaugeOpts is an alias for Opts. See there for doc comments.
+// GaugeOpts is an alias for Opts.
+//
+// See there for doc comments.
 type GaugeOpts Opts
+
 
 // NewGauge creates a new Gauge based on the provided GaugeOpts.
 //
-// The returned implementation is optimized for a fast Set method. If you have a
-// choice for managing the value of a Gauge via Set vs. Inc/Dec/Add/Sub, pick
-// the former. For example, the Inc method of the returned Gauge is slower than
-// the Inc method of a Counter returned by NewCounter. This matches the typical
-// scenarios for Gauges and Counters, where the former tends to be Set-heavy and
-// the latter Inc-heavy.
+// The returned implementation is optimized for a fast Set method.
+//
+// If you have a choice for managing the value of a Gauge via Set vs. Inc/Dec/Add/Sub, pick the former.
+//
+// For example, the Inc method of the returned Gauge is slower than the Inc method of a Counter returned by NewCounter.
+//
+// This matches the typical scenarios for Gauges and Counters, where the former tends to be Set-heavy and the latter Inc-heavy.
 func NewGauge(opts GaugeOpts) Gauge {
+
 	desc := NewDesc(
 		BuildFQName(opts.Namespace, opts.Subsystem, opts.Name),
 		opts.Help,
 		nil,
 		opts.ConstLabels,
 	)
-	result := &gauge{desc: desc, labelPairs: desc.constLabelPairs}
+
+
+	result := &gauge{
+		desc: desc,
+		labelPairs: desc.constLabelPairs,
+	}
+
+
 	result.init(result) // Init self-collection.
+
 	return result
 }
 
 type gauge struct {
-	// valBits contains the bits of the represented float64 value. It has
-	// to go first in the struct to guarantee alignment for atomic
-	// operations.  http://golang.org/pkg/sync/atomic/#pkg-note-BUG
+
+	// valBits contains the bits of the represented float64 value.
+	//
+	// It has to go first in the struct to guarantee alignment for atomic operations.
+	//
+	// http://golang.org/pkg/sync/atomic/#pkg-note-BUG
 	valBits uint64
 
 	selfCollector
@@ -126,30 +147,41 @@ func (g *gauge) Write(out *dto.Metric) error {
 	return populateMetric(GaugeValue, val, g.labelPairs, nil, out)
 }
 
-// GaugeVec is a Collector that bundles a set of Gauges that all share the same
-// Desc, but have different values for their variable labels. This is used if
-// you want to count the same thing partitioned by various dimensions
-// (e.g. number of operations queued, partitioned by user and operation
-// type). Create instances with NewGaugeVec.
+
+
+// GaugeVec is a Collector that bundles a set of Gauges that all share the same Desc,
+// but have different values for their variable labels.
+//
+// This is used if you want to count the same thing partitioned by various dimensions
+// (e.g. number of operations queued, partitioned by user and operation type).
+//
+// Create instances with NewGaugeVec.
 type GaugeVec struct {
 	*metricVec
 }
 
-// NewGaugeVec creates a new GaugeVec based on the provided GaugeOpts and
-// partitioned by the given label names.
+// NewGaugeVec creates a new GaugeVec based on the provided GaugeOpts and partitioned by the given label names.
 func NewGaugeVec(opts GaugeOpts, labelNames []string) *GaugeVec {
+
 	desc := NewDesc(
 		BuildFQName(opts.Namespace, opts.Subsystem, opts.Name),
 		opts.Help,
 		labelNames,
 		opts.ConstLabels,
 	)
+
 	return &GaugeVec{
 		metricVec: newMetricVec(desc, func(lvs ...string) Metric {
+
 			if len(lvs) != len(desc.variableLabels) {
 				panic(makeInconsistentCardinalityError(desc.fqName, desc.variableLabels, lvs))
 			}
-			result := &gauge{desc: desc, labelPairs: makeLabelPairs(desc, lvs)}
+
+			result := &gauge{
+				desc: desc,
+				labelPairs: makeLabelPairs(desc, lvs),
+			}
+
 			result.init(result) // Init self-collection.
 			return result
 		}),
@@ -157,12 +189,18 @@ func NewGaugeVec(opts GaugeOpts, labelNames []string) *GaugeVec {
 }
 
 // GetMetricWithLabelValues returns the Gauge for the given slice of label
-// values (same order as the VariableLabels in Desc). If that combination of
-// label values is accessed for the first time, a new Gauge is created.
+// values (same order as the VariableLabels in Desc).
+//
+// If that combination of label values is accessed for the first time,
+// a new Gauge is created.
+//
+//
 //
 // It is possible to call this method without using the returned Gauge to only
-// create the new Gauge but leave it at its starting value 0. See also the
-// SummaryVec example.
+// create the new Gauge but leave it at its starting value 0.
+// See also the SummaryVec example.
+//
+//
 //
 // Keeping the Gauge for later use is possible (and should be considered if
 // performance is critical), but keep in mind that Reset, DeleteLabelValues and

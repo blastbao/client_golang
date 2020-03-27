@@ -31,15 +31,22 @@ func (s metricSorter) Swap(i, j int) {
 }
 
 func (s metricSorter) Less(i, j int) bool {
+
+
 	if len(s[i].Label) != len(s[j].Label) {
-		// This should not happen. The metrics are
-		// inconsistent. However, we have to deal with the fact, as
-		// people might use custom collectors or metric family injection
-		// to create inconsistent metrics. So let's simply compare the
-		// number of labels in this case. That will still yield
-		// reproducible sorting.
+		// This should not happen.
+		//
+		// The metrics are inconsistent.
+		//
+		// However, we have to deal with the fact, as people might use custom collectors
+		// or metric family injection to create inconsistent metrics.
+		//
+		// So let's simply compare the number of labels in this case.
+		// That will still yield reproducible sorting.
 		return len(s[i].Label) < len(s[j].Label)
 	}
+
+
 	for n, lp := range s[i].Label {
 		vi := lp.GetValue()
 		vj := s[j].Label[n].GetValue()
@@ -48,18 +55,22 @@ func (s metricSorter) Less(i, j int) bool {
 		}
 	}
 
-	// We should never arrive here. Multiple metrics with the same
-	// label set in the same scrape will lead to undefined ingestion
-	// behavior. However, as above, we have to provide stable sorting
-	// here, even for inconsistent metrics. So sort equal metrics
-	// by their timestamp, with missing timestamps (implying "now")
-	// coming last.
+
+	// We should never arrive here.
+	//
+	// Multiple metrics with the same label set in the same scrape will lead to undefined ingestion behavior.
+	//
+	// However, as above, we have to provide stable sorting here, even for inconsistent metrics.
+	//
+	// So sort equal metrics by their timestamp, with missing timestamps (implying "now") coming last.
 	if s[i].TimestampMs == nil {
 		return false
 	}
+
 	if s[j].TimestampMs == nil {
 		return true
 	}
+
 	return s[i].GetTimestampMs() < s[j].GetTimestampMs()
 }
 
@@ -67,19 +78,28 @@ func (s metricSorter) Less(i, j int) bool {
 // MetricFamilies pruned and the remaining MetricFamilies sorted by name within
 // the slice, with the contained Metrics sorted within each MetricFamily.
 func NormalizeMetricFamilies(metricFamiliesByName map[string]*dto.MetricFamily) []*dto.MetricFamily {
+
+
+	// 排序 mf.Metric
 	for _, mf := range metricFamiliesByName {
 		sort.Sort(metricSorter(mf.Metric))
 	}
+
+	// 排序 mfNames
 	names := make([]string, 0, len(metricFamiliesByName))
 	for name, mf := range metricFamiliesByName {
+		// 滤除无 metrics 的 mf
 		if len(mf.Metric) > 0 {
 			names = append(names, name)
 		}
 	}
 	sort.Strings(names)
+
+	// 按照有序的 mfNames 进行数据重组
 	result := make([]*dto.MetricFamily, 0, len(names))
 	for _, name := range names {
 		result = append(result, metricFamiliesByName[name])
 	}
+
 	return result
 }

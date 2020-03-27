@@ -46,7 +46,7 @@ import (
 	"github.com/prometheus/common/expfmt"
 	"github.com/prometheus/common/model"
 
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/blastbao/client_golang/prometheus"
 )
 
 const (
@@ -61,12 +61,16 @@ type HTTPDoer interface {
 	Do(*http.Request) (*http.Response, error)
 }
 
-// Pusher manages a push to the Pushgateway. Use New to create one, configure it
-// with its methods, and finally use the Add or Push method to push.
+// Pusher manages a push to the Pushgateway.
+//
+// Use New to create one, configure it with its methods, and finally use the Add or Push method to push.
 type Pusher struct {
+
 	error error
 
-	url, job string
+	url string
+	job string
+
 	grouping map[string]string
 
 	gatherers  prometheus.Gatherers
@@ -79,18 +83,20 @@ type Pusher struct {
 	expfmt expfmt.Format
 }
 
-// New creates a new Pusher to push to the provided URL with the provided job
-// name. You can use just host:port or ip:port as url, in which case “http://”
-// is added automatically. Alternatively, include the schema in the
-// URL. However, do not include the “/metrics/jobs/…” part.
+// New creates a new Pusher to push to the provided URL with the provided job name.
+// You can use just "host:port" or "ip:port" as url, in which case “http://” is added automatically.
+// Alternatively, include the schema in the URL.
+// However, do not include the “/metrics/jobs/…” part.
 func New(url, job string) *Pusher {
 	var (
 		reg = prometheus.NewRegistry()
 		err error
 	)
+
 	if !strings.Contains(url, "://") {
 		url = "http://" + url
 	}
+
 	if strings.HasSuffix(url, "/") {
 		url = url[:len(url)-1]
 	}
@@ -107,15 +113,18 @@ func New(url, job string) *Pusher {
 	}
 }
 
-// Push collects/gathers all metrics from all Collectors and Gatherers added to
-// this Pusher. Then, it pushes them to the Pushgateway configured while
-// creating this Pusher, using the configured job name and any added grouping
-// labels as grouping key. All previously pushed metrics with the same job and
-// other grouping labels will be replaced with the metrics pushed by this
-// call. (It uses HTTP method “PUT” to push to the Pushgateway.)
+// Push collects/gathers all metrics from all Collectors and Gatherers added to this Pusher.
 //
-// Push returns the first error encountered by any method call (including this
-// one) in the lifetime of the Pusher.
+// Then, it pushes them to the Pushgateway configured while creating this Pusher,
+// using the configured job name and any added grouping labels as grouping key.
+//
+//
+// All previously pushed metrics with the same job and other grouping labels will be replaced
+// with the metrics pushed by this call. (It uses HTTP method “PUT” to push to the Pushgateway.)
+//
+//
+// Push returns the first error encountered by any method call (including this one) in the lifetime
+// of the Pusher.
 func (p *Pusher) Push() error {
 	return p.push(http.MethodPut)
 }
@@ -138,8 +147,9 @@ func (p *Pusher) Gatherer(g prometheus.Gatherer) *Pusher {
 }
 
 // Collector adds a Collector to the Pusher, from which metrics will be
-// collected to push them to the Pushgateway. The collected metrics must not
-// contain a job label of their own.
+// collected to push them to the Pushgateway.
+//
+// The collected metrics must not contain a job label of their own.
 //
 // For convenience, this method returns a pointer to the Pusher itself.
 func (p *Pusher) Collector(c prometheus.Collector) *Pusher {
@@ -156,13 +166,17 @@ func (p *Pusher) Collector(c prometheus.Collector) *Pusher {
 //
 // For convenience, this method returns a pointer to the Pusher itself.
 func (p *Pusher) Grouping(name, value string) *Pusher {
+
 	if p.error == nil {
+
 		if !model.LabelName(name).IsValid() {
 			p.error = fmt.Errorf("grouping label has invalid name: %s", name)
 			return p
 		}
+
 		p.grouping[name] = value
 	}
+
 	return p
 }
 
@@ -205,13 +219,16 @@ func (p *Pusher) Format(format expfmt.Format) *Pusher {
 // Delete returns the first error encountered by any method call (including this
 // one) in the lifetime of the Pusher.
 func (p *Pusher) Delete() error {
+
 	if p.error != nil {
 		return p.error
 	}
+
 	req, err := http.NewRequest(http.MethodDelete, p.fullURL(), nil)
 	if err != nil {
 		return err
 	}
+
 	if p.useBasicAuth {
 		req.SetBasicAuth(p.username, p.password)
 	}
@@ -228,32 +245,44 @@ func (p *Pusher) Delete() error {
 }
 
 func (p *Pusher) push(method string) error {
+
 	if p.error != nil {
 		return p.error
 	}
+
+	//
 	mfs, err := p.gatherers.Gather()
 	if err != nil {
 		return err
 	}
+
+
 	buf := &bytes.Buffer{}
 	enc := expfmt.NewEncoder(buf, p.expfmt)
+
+
 	// Check for pre-existing grouping labels:
 	for _, mf := range mfs {
+
 		for _, m := range mf.GetMetric() {
+
 			for _, l := range m.GetLabel() {
+
 				if l.GetName() == "job" {
 					return fmt.Errorf("pushed metric %s (%s) already contains a job label", mf.GetName(), m)
 				}
+
 				if _, ok := p.grouping[l.GetName()]; ok {
-					return fmt.Errorf(
-						"pushed metric %s (%s) already contains grouping label %s",
-						mf.GetName(), m, l.GetName(),
-					)
+					return fmt.Errorf("pushed metric %s (%s) already contains grouping label %s", mf.GetName(), m, l.GetName())
 				}
+
 			}
+
 		}
 		enc.Encode(mf)
 	}
+
+
 	req, err := http.NewRequest(method, p.fullURL(), buf)
 	if err != nil {
 		return err
@@ -267,27 +296,38 @@ func (p *Pusher) push(method string) error {
 		return err
 	}
 	defer resp.Body.Close()
+
 	// Pushgateway 0.10+ responds with StatusOK, earlier versions with StatusAccepted.
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
 		body, _ := ioutil.ReadAll(resp.Body) // Ignore any further error as this is for an error message only.
 		return fmt.Errorf("unexpected status code %d while pushing to %s: %s", resp.StatusCode, p.fullURL(), body)
 	}
+
 	return nil
 }
 
-// fullURL assembles the URL used to push/delete metrics and returns it as a
-// string. The job name and any grouping label values containing a '/' will
-// trigger a base64 encoding of the affected component and proper suffixing of
-// the preceding component. If the component does not contain a '/' but other
-// special character, the usual url.QueryEscape is used for compatibility with
-// older versions of the Pushgateway and for better readability.
+// fullURL assembles the URL used to push/delete metrics and returns it as a string.
+//
+// The job name and any grouping label values containing a '/' will trigger a base64
+// encoding of the affected component and proper suffixing of the preceding component.
+//
+// If the component does not contain a '/' but other special character,
+// the usual url.QueryEscape is used for compatibility with older versions of the Pushgateway
+// and for better readability.
+//
+//
+//
 func (p *Pusher) fullURL() string {
+
 	urlComponents := []string{}
+
 	if encodedJob, base64 := encodeComponent(p.job); base64 {
 		urlComponents = append(urlComponents, "job"+base64Suffix, encodedJob)
 	} else {
 		urlComponents = append(urlComponents, "job", encodedJob)
 	}
+
+
 	for ln, lv := range p.grouping {
 		if encodedLV, base64 := encodeComponent(lv); base64 {
 			urlComponents = append(urlComponents, ln+base64Suffix, encodedLV)
@@ -295,6 +335,7 @@ func (p *Pusher) fullURL() string {
 			urlComponents = append(urlComponents, ln, encodedLV)
 		}
 	}
+
 	return fmt.Sprintf("%s/metrics/%s", p.url, strings.Join(urlComponents, "/"))
 }
 

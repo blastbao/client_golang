@@ -82,6 +82,7 @@ func validateLabelValues(vals []string, expectedNumberOfValues int) error {
 	return nil
 }
 
+// 检查 label name 是否合法， 1. 合法字符串 2. 不能以 __ 开头
 func checkLabelName(l string) bool {
 	return model.LabelName(l).IsValid() && !strings.HasPrefix(l, reservedLabelPrefix)
 }

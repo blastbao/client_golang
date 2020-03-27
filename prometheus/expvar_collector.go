@@ -86,6 +86,8 @@ func (e *expvarCollector) Collect(ch chan<- Metric) {
 			ch <- NewInvalidMetric(desc, err)
 			continue
 		}
+
+
 		var processValue func(v interface{}, i int)
 		processValue = func(v interface{}, i int) {
 			if i >= len(labels) {
