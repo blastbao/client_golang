@@ -266,23 +266,30 @@ func TestCurryVecWithCollisions(t *testing.T) {
 func testCurryVec(t *testing.T, vec *CounterVec) {
 
 	assertMetrics := func(t *testing.T) {
+
 		n := 0
 		for _, m := range vec.metricMap.metrics {
 			n += len(m)
 		}
+
 		if n != 2 {
 			t.Error("expected two metrics, got", n)
 		}
+
 		m := &dto.Metric{}
 		c1, err := vec.GetMetricWithLabelValues("1", "2", "3")
 		if err != nil {
 			t.Fatal("unexpected error getting metric:", err)
 		}
+
+
 		c1.Write(m)
 		if want, got := 1., m.GetCounter().GetValue(); want != got {
 			t.Errorf("want %f as counter value, got %f", want, got)
 		}
 		m.Reset()
+
+
 		c2, err := vec.GetMetricWithLabelValues("11", "22", "33")
 		if err != nil {
 			t.Fatal("unexpected error getting metric:", err)

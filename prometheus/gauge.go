@@ -30,8 +30,11 @@ import (
 //
 // To create Gauge instances, use NewGauge.
 type Gauge interface {
+
+	// 实现的接口
 	Metric
 	Collector
+
 
 	// Set sets the Gauge to an arbitrary value.
 	Set(float64)

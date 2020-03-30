@@ -62,8 +62,7 @@ func init() {
 	MustRegister(NewGoCollector())
 }
 
-// NewRegistry creates a new vanilla Registry without any Collectors
-// pre-registered.
+// NewRegistry creates a new vanilla Registry without any Collectors pre-registered.
 func NewRegistry() *Registry {
 	return &Registry{
 		collectorsByID:  map[uint64]Collector{},
@@ -112,11 +111,34 @@ type Registerer interface {
 	// Collector, and for providing a Collector that will not cause
 	// inconsistent metrics on collection. (This would lead to scrape
 	// errors.)
+
+
+	// 注册一个需要包含在指标集中的收集器。如果收集器提供的描述符非法、
+	// 或者不满足metric.Desc的一致性/唯一性需求，则返回错误
+	//
+	// 如果相等的收集器已经注册过，返回AlreadyRegisteredError，其中包含先前注册的收集器的实例
+	//
+	// 其Describe方法不产生任何Desc的收集器，视为Unchecked，对这种收集器的注册总是成功
+	// 重现注册它时也不会有检查。因此，调用者必须负责确保不会重复注册
+
 	Register(Collector) error
+
+
+
+
 	// MustRegister works like Register but registers any number of
 	// Collectors and panics upon the first registration that causes an
 	// error.
+	//
+	// 注册多个收集器，并且在遇到第一个失败时就Panic
 	MustRegister(...Collector)
+
+
+
+
+
+
+
 	// Unregister unregisters the Collector that equals the Collector passed
 	// in as an argument.  (Two Collectors are considered equal if their
 	// Describe method yields the same set of descriptors.) The function
@@ -130,6 +152,8 @@ type Registerer interface {
 	// a different help string. The rationale here is that the same registry
 	// instance must only collect consistent metrics throughout its
 	// lifetime.
+	//
+	// 反注册
 	Unregister(Collector) bool
 }
 
@@ -210,19 +234,24 @@ func (err AlreadyRegisteredError) Error() string {
 	return "duplicate metrics collector registration attempted"
 }
 
-// MultiError is a slice of errors implementing the error interface. It is used
-// by a Gatherer to report multiple errors during MetricFamily gathering.
+
+// MultiError is a slice of errors implementing the error interface.
+//
+// It is used by a Gatherer to report multiple errors during MetricFamily gathering.
 type MultiError []error
 
 func (errs MultiError) Error() string {
+
 	if len(errs) == 0 {
 		return ""
 	}
+
 	buf := &bytes.Buffer{}
 	fmt.Fprintf(buf, "%d error(s) occurred:", len(errs))
 	for _, err := range errs {
 		fmt.Fprintf(buf, "\n* %s", err)
 	}
+
 	return buf.String()
 }
 

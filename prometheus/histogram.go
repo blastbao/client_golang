@@ -502,19 +502,31 @@ func (v *HistogramVec) With(labels Labels) Observer {
 	return h
 }
 
-// CurryWith returns a vector curried with the provided labels, i.e. the
-// returned vector has those labels pre-set for all labeled operations performed
-// on it. The cardinality of the curried vector is reduced accordingly. The
-// order of the remaining labels stays the same (just with the curried labels
-// taken out of the sequence – which is relevant for the
-// (GetMetric)WithLabelValues methods). It is possible to curry a curried
-// vector, but only with labels not yet used for currying before.
+// CurryWith returns a vector curried with the provided labels, i.e. the returned
+// vector has those labels pre-set for all labeled operations performed on it.
+// The cardinality of the curried vector is reduced accordingly.
 //
-// The metrics contained in the HistogramVec are shared between the curried and
-// uncurried vectors. They are just accessed differently. Curried and uncurried
-// vectors behave identically in terms of collection. Only one must be
-// registered with a given registry (usually the uncurried version). The Reset
-// method deletes all metrics, even if called on a curried vector.
+//
+// CurryWith 返回一个 vector ，该 vector 为对其执行的所有标记操作预先设置了这些标签。
+//
+//相应地降低了curried向量的基数。
+//
+// The order of the remaining labels stays the same (just with the curried labels
+// taken out of the sequence – which is relevant for the (GetMetric)WithLabelValues methods).
+//
+// It is possible to curry a curried vector, but only with labels not yet used for currying before.
+//
+// The metrics contained in the HistogramVec are shared between the curried and uncurried vectors.
+//
+// They are just accessed differently. Curried and uncurried
+// vectors behave identically in terms of collection.
+//
+// Only one must be registered with a given registry (usually the uncurried version).
+// The Reset method deletes all metrics, even if called on a curried vector.
+//
+//
+//
+//
 func (v *HistogramVec) CurryWith(labels Labels) (ObserverVec, error) {
 	vec, err := v.curryWith(labels)
 	if vec != nil {

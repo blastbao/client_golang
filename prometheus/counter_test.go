@@ -31,13 +31,17 @@ func TestCounterAdd(t *testing.T) {
 		Help:        "test help",
 		ConstLabels: Labels{"a": "1", "b": "2"},
 	}).(*counter)
+
 	counter.Inc()
+
 	if expected, got := 0.0, math.Float64frombits(counter.valBits); expected != got {
 		t.Errorf("Expected %f, got %f.", expected, got)
 	}
+
 	if expected, got := uint64(1), counter.valInt; expected != got {
 		t.Errorf("Expected %d, got %d.", expected, got)
 	}
+
 	counter.Add(42)
 	if expected, got := 0.0, math.Float64frombits(counter.valBits); expected != got {
 		t.Errorf("Expected %f, got %f.", expected, got)

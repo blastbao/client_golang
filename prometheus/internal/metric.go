@@ -34,6 +34,7 @@ func (s metricSorter) Less(i, j int) bool {
 
 
 	if len(s[i].Label) != len(s[j].Label) {
+
 		// This should not happen.
 		//
 		// The metrics are inconsistent.
@@ -85,7 +86,7 @@ func NormalizeMetricFamilies(metricFamiliesByName map[string]*dto.MetricFamily) 
 		sort.Sort(metricSorter(mf.Metric))
 	}
 
-	// 排序 mfNames
+	// 排序 mf names
 	names := make([]string, 0, len(metricFamiliesByName))
 	for name, mf := range metricFamiliesByName {
 		// 滤除无 metrics 的 mf
@@ -95,7 +96,7 @@ func NormalizeMetricFamilies(metricFamiliesByName map[string]*dto.MetricFamily) 
 	}
 	sort.Strings(names)
 
-	// 按照有序的 mfNames 进行数据重组
+	// 按照有序的 mf names 进行数据重组
 	result := make([]*dto.MetricFamily, 0, len(names))
 	for _, name := range names {
 		result = append(result, metricFamiliesByName[name])

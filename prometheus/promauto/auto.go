@@ -158,11 +158,13 @@
 // Enjoy promauto responsibly!
 package promauto
 
-import "github.com/prometheus/client_golang/prometheus"
+import "github.com/blastbao/client_golang/prometheus"
 
 // NewCounter works like the function of the same name in the prometheus package
-// but it automatically registers the Counter with the
-// prometheus.DefaultRegisterer. If the registration fails, NewCounter panics.
+// but it automatically registers the Counter with the prometheus.DefaultRegisterer.
+//
+// If the registration fails, NewCounter panics.
+//
 func NewCounter(opts prometheus.CounterOpts) prometheus.Counter {
 	return With(prometheus.DefaultRegisterer).NewCounter(opts)
 }
@@ -251,9 +253,12 @@ type Factory struct {
 	r prometheus.Registerer
 }
 
-// With creates a Factory using the provided Registerer for registration of the
-// created Collectors.
-func With(r prometheus.Registerer) Factory { return Factory{r} }
+// With creates a Factory using the provided Registerer for registration of the created Collectors.
+func With(r prometheus.Registerer) Factory {
+	return Factory{
+		r: r,
+	}
+}
 
 // NewCounter works like the function of the same name in the prometheus package
 // but it automatically registers the Counter with the Factory's Registerer.

@@ -123,21 +123,30 @@ func (m *constMetric) Write(out *dto.Metric) error {
 	return populateMetric(m.valType, m.val, m.labelPairs, nil, out)
 }
 
-func populateMetric(
-	t ValueType,
-	v float64,
-	labelPairs []*dto.LabelPair,
-	e *dto.Exemplar,
-	m *dto.Metric,
-) error {
+
+//
+// m 为传出参数
+//
+func populateMetric(t ValueType, v float64, labelPairs []*dto.LabelPair, e *dto.Exemplar, m *dto.Metric) error {
+
+	// 设置 m 的标签集合
 	m.Label = labelPairs
+
+	// 根据类型设置 m 的值字段
 	switch t {
 	case CounterValue:
-		m.Counter = &dto.Counter{Value: proto.Float64(v), Exemplar: e}
+		m.Counter = &dto.Counter{
+			Value: proto.Float64(v),
+			Exemplar: e,
+		}
 	case GaugeValue:
-		m.Gauge = &dto.Gauge{Value: proto.Float64(v)}
+		m.Gauge = &dto.Gauge{
+			Value: proto.Float64(v),
+		}
 	case UntypedValue:
-		m.Untyped = &dto.Untyped{Value: proto.Float64(v)}
+		m.Untyped = &dto.Untyped{
+			Value: proto.Float64(v),
+		}
 	default:
 		return fmt.Errorf("encountered unknown type %v", t)
 	}
@@ -145,24 +154,33 @@ func populateMetric(
 }
 
 func makeLabelPairs(desc *Desc, labelValues []string) []*dto.LabelPair {
+
+
 	totalLen := len(desc.variableLabels) + len(desc.constLabelPairs)
 	if totalLen == 0 {
 		// Super fast path.
 		return nil
 	}
+
 	if len(desc.variableLabels) == 0 {
 		// Moderately fast path.
 		return desc.constLabelPairs
 	}
+
 	labelPairs := make([]*dto.LabelPair, 0, totalLen)
+
+	//1. labelPairs = append(labelPairs, desc.variableLabels...)
 	for i, n := range desc.variableLabels {
 		labelPairs = append(labelPairs, &dto.LabelPair{
 			Name:  proto.String(n),
 			Value: proto.String(labelValues[i]),
 		})
 	}
+	//2. labelPairs = append(labelPairs, desc.constLabelPairs...)
 	labelPairs = append(labelPairs, desc.constLabelPairs...)
+	//3. sort(labelPairs)
 	sort.Sort(labelPairSorter(labelPairs))
+
 	return labelPairs
 }
 

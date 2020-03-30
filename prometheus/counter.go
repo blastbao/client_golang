@@ -63,27 +63,43 @@ type ExemplarAdder interface {
 // CounterOpts is an alias for Opts. See there for doc comments.
 type CounterOpts Opts
 
+
 // NewCounter creates a new Counter based on the provided CounterOpts.
 //
-// The returned implementation also implements ExemplarAdder. It is safe to
-// perform the corresponding type assertion.
+// The returned implementation also implements ExemplarAdder.
+// It is safe to perform the corresponding type assertion.
 //
-// The returned implementation tracks the counter value in two separate
-// variables, a float64 and a uint64. The latter is used to track calls of the
-// Inc method and calls of the Add method with a value that can be represented
-// as a uint64. This allows atomic increments of the counter with optimal
-// performance. (It is common to have an Inc call in very hot execution paths.)
-// Both internal tracking values are added up in the Write method. This has to
-// be taken into account when it comes to precision and overflow behavior.
+// The returned implementation tracks the counter value in two separate variables,
+// a float64 and a uint64.
+//
+// The latter is used to track calls of the Inc method and calls of the Add method
+// with a value that can be represented as a uint64.
+//
+// This allows atomic increments of the counter with optimal performance.
+// (It is common to have an Inc call in very hot execution paths.)
+//
+// Both internal tracking values are added up in the Write method.
+//
+// This has to be taken into account when it comes to precision and overflow behavior.
+//
+//
 func NewCounter(opts CounterOpts) Counter {
+
 	desc := NewDesc(
 		BuildFQName(opts.Namespace, opts.Subsystem, opts.Name),
 		opts.Help,
 		nil,
 		opts.ConstLabels,
 	)
-	result := &counter{desc: desc, labelPairs: desc.constLabelPairs, now: time.Now}
+
+	result := &counter{
+		desc: desc,
+		labelPairs: desc.constLabelPairs,
+		now: time.Now,
+	}
+
 	result.init(result) // Init self-collection.
+
 	return result
 }
 
@@ -140,29 +156,37 @@ func (c *counter) Inc() {
 	atomic.AddUint64(&c.valInt, 1)
 }
 
+
+
+// out 为传出参数
 func (c *counter) Write(out *dto.Metric) error {
 
-
+	// 值
 	fval := math.Float64frombits(atomic.LoadUint64(&c.valBits))
 	ival := atomic.LoadUint64(&c.valInt)
 	val := fval + float64(ival)
 
+	// ?
 	var exemplar *dto.Exemplar
 	if e := c.exemplar.Load(); e != nil {
 		exemplar = e.(*dto.Exemplar)
 	}
 
+	//
 	return populateMetric(CounterValue, val, c.labelPairs, exemplar, out)
 }
 
 func (c *counter) updateExemplar(v float64, l Labels) {
+
 	if l == nil {
 		return
 	}
+
 	e, err := newExemplar(v, c.now(), l)
 	if err != nil {
 		panic(err)
 	}
+
 	c.exemplar.Store(e)
 }
 
@@ -170,6 +194,7 @@ func (c *counter) updateExemplar(v float64, l Labels) {
 
 // CounterVec is a Collector that bundles a set of Counters that all share the same Desc,
 // but have different values for their variable labels.
+//
 //
 // This is used if you want to count the same thing partitioned by various dimensions
 // (e.g. number of HTTP requests, partitioned by response code and method).
@@ -182,34 +207,51 @@ type CounterVec struct {
 // NewCounterVec creates a new CounterVec based on the provided CounterOpts and
 // partitioned by the given label names.
 func NewCounterVec(opts CounterOpts, labelNames []string) *CounterVec {
+
+	// 构造 metric 描述信息
 	desc := NewDesc(
-		BuildFQName(opts.Namespace, opts.Subsystem, opts.Name),
-		opts.Help,
-		labelNames,
-		opts.ConstLabels,
+		BuildFQName(opts.Namespace, opts.Subsystem, opts.Name), // 全限定名称
+		opts.Help,												// 帮助信息
+		labelNames,												// 变量标签
+		opts.ConstLabels,										// 常量标签
 	)
+
+	//
 	return &CounterVec{
+
 		metricVec: newMetricVec(desc, func(lvs ...string) Metric {
+
 			if len(lvs) != len(desc.variableLabels) {
 				panic(makeInconsistentCardinalityError(desc.fqName, desc.variableLabels, lvs))
 			}
+
 			result := &counter{
 				desc: desc,
 				labelPairs: makeLabelPairs(desc, lvs),
 				now: time.Now,
 			}
+
 			result.init(result) // Init self-collection.
 			return result
 		}),
 	}
 }
 
+
+
+
+
+
+
+
+
 // GetMetricWithLabelValues returns the Counter for the given slice of label values
 // (same order as the VariableLabels in Desc).
+// GetMetricWithLabelValues 返回与给定的标签值数组对应的 Counter 计数器。（与 Desc 中的变量标签的顺序相同）
 //
 // If that combination of label values is accessed for the first time,
 // a new Counter is created.
-//
+// 如果当前这组标签值是第一次被访问，将创建一个新 Counter 计数器。
 //
 //
 // It is possible to call this method without using the returned Counter to only
@@ -223,10 +265,10 @@ func NewCounterVec(opts CounterOpts, labelNames []string) *CounterVec {
 // performance is critical), but keep in mind that Reset, DeleteLabelValues and
 // Delete can be used to delete the Counter from the CounterVec.
 //
+//
+//
 // In that case, the Counter will still exist, but it will not be exported anymore,
 // even if a Counter with the same label values is created later.
-//
-//
 //
 //
 // An error is returned if the number of label values is not the same as the
@@ -234,9 +276,9 @@ func NewCounterVec(opts CounterOpts, labelNames []string) *CounterVec {
 //
 //
 //
-//
 // Note that for more than one label value, this method is prone to mistakes
 // caused by an incorrect order of arguments.
+//
 //
 // Consider GetMetricWith(Labels) as an alternative to avoid that type of mistake.
 // For higher label numbers, the latter has a much more readable (albeit more verbose) syntax,
@@ -244,11 +286,19 @@ func NewCounterVec(opts CounterOpts, labelNames []string) *CounterVec {
 //
 //
 // See also the GaugeVec example.
-func (v *CounterVec) GetMetricWithLabelValues(lvs ...string) (Counter, error) {
+//
+//
+//
+func (v *CounterVec) GetMetricWithLabelValues(lvs ...string) (Counter, error) {  // lvs => label values
+
+	//
 	metric, err := v.metricVec.getMetricWithLabelValues(lvs...)
 	if metric != nil {
 		return metric.(Counter), err
 	}
+
+
+
 	return nil, err
 }
 
@@ -299,6 +349,8 @@ func (v *CounterVec) With(labels Labels) Counter {
 	}
 	return c
 }
+
+
 
 // CurryWith returns a vector curried with the provided labels, i.e.
 // the returned vector has those labels pre-set for all labeled operations performed on it.
