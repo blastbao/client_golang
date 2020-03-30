@@ -188,32 +188,38 @@ func (b *Bridge) Push() error {
 }
 
 func writeMetrics(w io.Writer, mfs []*dto.MetricFamily, useTags bool, prefix string, now model.Time) error {
-	vec, err := expfmt.ExtractSamples(&expfmt.DecodeOptions{
-		Timestamp: now,
-	}, mfs...)
+
+
+	vec, err := expfmt.ExtractSamples(&expfmt.DecodeOptions{Timestamp: now}, mfs...)
 	if err != nil {
 		return err
 	}
 
 	buf := bufio.NewWriter(w)
 	for _, s := range vec {
+
 		for _, c := range prefix {
 			if _, err := buf.WriteRune(c); err != nil {
 				return err
 			}
 		}
+
 		if err := buf.WriteByte('.'); err != nil {
 			return err
 		}
+
 		if err := writeMetric(buf, s.Metric, useTags); err != nil {
 			return err
 		}
+
 		if _, err := fmt.Fprintf(buf, " %g %d\n", s.Value, int64(s.Timestamp)/millisecondsPerSecond); err != nil {
 			return err
 		}
+
 		if err := buf.Flush(); err != nil {
 			return err
 		}
+
 	}
 
 	return nil

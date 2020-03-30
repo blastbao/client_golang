@@ -20,17 +20,6 @@ import (
 	"github.com/prometheus/common/model"
 )
 
-
-
-
-
-// Metric Vector 用于支持带 Label 的指标。
-//
-// 由于各种指标都可以带上 Label，因此 Metric Vector 本身实现为了一种泛型结构体，
-// Counter、Gauge 和 Histogram 在这之上实现了 CounterVec、GaugeVec 和 HistogramVec。
-
-
-
 // metricVec is a Collector to bundle metrics of the same name that differ in their label values.
 //
 // metricVec is not used directly (and therefore unexported).

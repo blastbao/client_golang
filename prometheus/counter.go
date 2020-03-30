@@ -85,6 +85,7 @@ type CounterOpts Opts
 //
 func NewCounter(opts CounterOpts) Counter {
 
+	//
 	desc := NewDesc(
 		BuildFQName(opts.Namespace, opts.Subsystem, opts.Name),
 		opts.Help,
@@ -92,6 +93,7 @@ func NewCounter(opts CounterOpts) Counter {
 		opts.ConstLabels,
 	)
 
+	//
 	result := &counter{
 		desc: desc,
 		labelPairs: desc.constLabelPairs,
@@ -216,24 +218,25 @@ func NewCounterVec(opts CounterOpts, labelNames []string) *CounterVec {
 		opts.ConstLabels,										// 常量标签
 	)
 
-	//
+	newCounterMetric := func(lvs ...string) Metric {
+		// 新建的 metric 必须和 desc 具有相同的标签数
+		if len(lvs) != len(desc.variableLabels) {
+			panic(makeInconsistentCardinalityError(desc.fqName, desc.variableLabels, lvs))
+		}
+		// 构造 counter 对象
+		result := &counter{
+			desc: desc,
+			labelPairs: makeLabelPairs(desc, lvs),
+			now: time.Now,
+		}
+		// ...
+		result.init(result) // Init self-collection.
+		// ...
+		return result
+	}
+
 	return &CounterVec{
-
-		metricVec: newMetricVec(desc, func(lvs ...string) Metric {
-
-			if len(lvs) != len(desc.variableLabels) {
-				panic(makeInconsistentCardinalityError(desc.fqName, desc.variableLabels, lvs))
-			}
-
-			result := &counter{
-				desc: desc,
-				labelPairs: makeLabelPairs(desc, lvs),
-				now: time.Now,
-			}
-
-			result.init(result) // Init self-collection.
-			return result
-		}),
+		metricVec: newMetricVec(desc, newCounterMetric),
 	}
 }
 

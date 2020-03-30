@@ -153,6 +153,8 @@ func populateMetric(t ValueType, v float64, labelPairs []*dto.LabelPair, e *dto.
 	return nil
 }
 
+
+
 func makeLabelPairs(desc *Desc, labelValues []string) []*dto.LabelPair {
 
 
@@ -169,15 +171,17 @@ func makeLabelPairs(desc *Desc, labelValues []string) []*dto.LabelPair {
 
 	labelPairs := make([]*dto.LabelPair, 0, totalLen)
 
-	//1. labelPairs = append(labelPairs, desc.variableLabels...)
+	//1. labelPairs = append(labelPairs, labelValues...)
 	for i, n := range desc.variableLabels {
 		labelPairs = append(labelPairs, &dto.LabelPair{
 			Name:  proto.String(n),
 			Value: proto.String(labelValues[i]),
 		})
 	}
+
 	//2. labelPairs = append(labelPairs, desc.constLabelPairs...)
 	labelPairs = append(labelPairs, desc.constLabelPairs...)
+
 	//3. sort(labelPairs)
 	sort.Sort(labelPairSorter(labelPairs))
 

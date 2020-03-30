@@ -140,8 +140,8 @@ type selfCollector struct {
 	self Metric
 }
 
-// init provides the selfCollector with a reference to the metric it is supposed
-// to collect. It is usually called within the factory function to create a metric.
+// init provides the selfCollector with a reference to the metric it is supposed to collect.
+// It is usually called within the factory function to create a metric.
 //
 // See example.
 func (c *selfCollector) init(self Metric) {
