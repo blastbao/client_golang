@@ -93,32 +93,64 @@ func NewPedanticRegistry() *Registry {
 // directly). In that way, they are free to use custom Registerer implementation
 // (e.g. for testing purposes).
 type Registerer interface {
-	// Register registers a new Collector to be included in metrics
-	// collection. It returns an error if the descriptors provided by the
-	// Collector are invalid or if they — in combination with descriptors of
-	// already registered Collectors — do not fulfill the consistency and
-	// uniqueness criteria described in the documentation of metric.Desc.
+
+
+	// Register registers a new Collector to be included in metrics collection.
+	//
+	//
+	//
+	// It returns an error if the descriptors provided by the Collector are invalid or if they
+	// — in combination with descriptors of already registered Collectors
+	// — do not fulfill the consistency and uniqueness criteria described in the documentation of metric.Desc.
 	//
 	// If the provided Collector is equal to a Collector already registered
-	// (which includes the case of re-registering the same Collector), the
-	// returned error is an instance of AlreadyRegisteredError, which
-	// contains the previously registered Collector.
+	// (which includes the case of re-registering the same Collector),
+	// the returned error is an instance of AlreadyRegisteredError,
+	// which contains the previously registered Collector.
 	//
-	// A Collector whose Describe method does not yield any Desc is treated
-	// as unchecked. Registration will always succeed. No check for
-	// re-registering (see previous paragraph) is performed. Thus, the
-	// caller is responsible for not double-registering the same unchecked
-	// Collector, and for providing a Collector that will not cause
-	// inconsistent metrics on collection. (This would lead to scrape
-	// errors.)
+	// A Collector whose Describe method does not yield any Desc is treated as unchecked.
+	// Registration will always succeed.
+	//
+	// No check for re-registering (see previous paragraph) is performed.
+	// Thus, the caller is responsible for not double-registering the same unchecked Collector,
+	// and for providing a Collector that will not cause inconsistent metrics on collection.
+	// (This would lead to scrape errors.)
 
 
-	// 注册一个需要包含在指标集中的收集器。如果收集器提供的描述符非法、
-	// 或者不满足metric.Desc的一致性/唯一性需求，则返回错误
+	// MustRegister 是注册 collector 最通用的方式。如果需要捕获注册时产生的错误，可以使用Register 函数，该函数会返回 error 而非 panic 。
+
+
+
+
+	// 如果注册的 collector 与已经注册的 metric 不兼容或不一致时就会返回错误。
 	//
-	// 如果相等的收集器已经注册过，返回AlreadyRegisteredError，其中包含先前注册的收集器的实例
+	// registry 用于使收集的 metric 与 prometheus 数据模型保持一致，不一致的错误会在注册时而非采集时检测到。
+	// 前者会在系统的启动时检测到，而后者只会在采集时发生（可能不会在首次采集时发生），这也是为什么 collector 和
+	// metric 必须向 Registry describe 它们的原因。
+
+
+	// 以上提到的 registry 都被称为默认 registry ，可以在全局变量 DefaultRegisterer 中找到。
+	// 使用 NewRegistry 可以创建 custom registry，或者可以自己实现 Registerer 或 Gatherer 接口。
+	// custom registry 的 Register 和 Unregister 运作方式类似，默认 registry 则使用全局函数 Register 和 Unregister 。
+
+	// custom registry 的使用方式还有很多：
+	// 可以使用 NewPedanticRegistry 来注册特殊的属性；
+	// 可以避免由 DefaultRegisterer 限制的全局状态属性；
+	// 也可以同时使用多个 registry 来暴露不同的metrics。
+
+	// DefaultRegisterer 注册了 Go runtime metrics（通过 NewGoCollecto r）和用于 process metrics 的 collector
+	// （通过NewProcessCollector）。
+	// 通过custom registry可以自己决定注册的collector。
+
+
+
+	// 注册一个需要包含在指标集中的收集器。
 	//
-	// 其Describe方法不产生任何Desc的收集器，视为Unchecked，对这种收集器的注册总是成功
+	// 如果收集器提供的描述符非法、或者不满足 metric.Desc 的一致性/唯一性需求，则返回错误
+	//
+	// 如果相同的收集器已经注册过，返回 AlreadyRegisteredError ，其中包含先前注册的收集器的实例
+	//
+	// 其 Describe 方法不产生任何 Desc 的收集器，视为 Unchecked ，对这种收集器的注册总是成功的
 	// 重现注册它时也不会有检查。因此，调用者必须负责确保不会重复注册
 
 	Register(Collector) error
@@ -126,11 +158,10 @@ type Registerer interface {
 
 
 
-	// MustRegister works like Register but registers any number of
-	// Collectors and panics upon the first registration that causes an
-	// error.
+	// MustRegister works like Register but registers any number of Collectors and
+	// panics upon the first registration that causes an error.
 	//
-	// 注册多个收集器，并且在遇到第一个失败时就Panic
+	// 注册多个收集器，并且在遇到第一个失败时就 Panic
 	MustRegister(...Collector)
 
 
@@ -280,10 +311,16 @@ func (errs MultiError) MaybeUnwrap() error {
 
 
 
-// Registry registers Prometheus collectors, collects their metrics, and gathers
-// them into MetricFamilies for exposition. It implements both Registerer and
-// Gatherer. The zero value is not usable. Create instances with NewRegistry or
-// NewPedanticRegistry.
+// Registry registers Prometheus collectors, collects their metrics, and gathers them into MetricFamilies for exposition.
+//
+// It implements both Registerer and Gatherer.
+//
+// The zero value is not usable.
+//
+// Create instances with NewRegistry or NewPedanticRegistry.
+//
+//
+
 type Registry struct {
 	mtx                   sync.RWMutex
 	collectorsByID        map[uint64]Collector // ID is a hash of the descIDs.
@@ -295,17 +332,31 @@ type Registry struct {
 
 // Register implements Registerer.
 func (r *Registry) Register(c Collector) error {
+
 	var (
+
+		// 获取 c 所收集的 metrics 的 descs
 		descChan           = make(chan *Desc, capDescChan)
+
+		// 保存 c 所收集、新的 metrics 的 descIds，因为 desc 可能已经被注册，这些新的 descIds 在完成注册前会加入到 r.descIDs[] 中。
 		newDescIDs         = map[uint64]struct{}{}
+
+		// ？
 		newDimHashesByName = map[string]uint64{}
+
+		// 计算 c 的 ID
 		collectorID        uint64 // All desc IDs XOR'd together.
+
+		//
 		duplicateDescErr   error
 	)
+
 	go func() {
 		c.Describe(descChan)
 		close(descChan)
 	}()
+
+
 	r.mtx.Lock()
 	defer func() {
 		// Drain channel in case of premature return to not leak a goroutine.
@@ -313,50 +364,85 @@ func (r *Registry) Register(c Collector) error {
 		}
 		r.mtx.Unlock()
 	}()
+
+
 	// Conduct various tests...
+
+	//
+	//
+	// 读取 collector 收集的 metrics 的 descs
 	for desc := range descChan {
 
+
 		// Is the descriptor valid at all?
+		//
+		// 如果 desc 在 NewDesc() 创建时出错，会在此时发现该错误。
 		if desc.err != nil {
 			return fmt.Errorf("descriptor %s is invalid: %s", desc, desc.err)
 		}
 
+
 		// Is the descID unique?
 		// (In other words: Is the fqName + constLabel combination unique?)
+		//
+		// 相同 desc 只保存一份
+		//
 		if _, exists := r.descIDs[desc.id]; exists {
 			duplicateDescErr = fmt.Errorf("descriptor %s already exists with the same fully-qualified name and const label values", desc)
 		}
-		// If it is not a duplicate desc in this collector, XOR it to
-		// the collectorID.  (We allow duplicate descs within the same
-		// collector, but their existence must be a no-op.)
+
+
+		// If it is not a duplicate desc in this collector, XOR it to the collectorID.
+		// (We allow duplicate descs within the same collector, but their existence must be a no-op.)
+		//
+		//
+		//
 		if _, exists := newDescIDs[desc.id]; !exists {
 			newDescIDs[desc.id] = struct{}{}
 			collectorID ^= desc.id
 		}
 
-		// Are all the label names and the help string consistent with
-		// previous descriptors of the same name?
+
+
+		// Are all the label names and the help string consistent with previous descriptors of the same name?
+		//
 		// First check existing descriptors...
+		//
+		//
+		//
+		//
 		if dimHash, exists := r.dimHashesByName[desc.fqName]; exists {
+
 			if dimHash != desc.dimHash {
 				return fmt.Errorf("a previously registered descriptor with the same fully-qualified name as %s has different label names or a different help string", desc)
 			}
+
 		} else {
+
 			// ...then check the new descriptors already seen.
 			if dimHash, exists := newDimHashesByName[desc.fqName]; exists {
+
 				if dimHash != desc.dimHash {
 					return fmt.Errorf("descriptors reported by collector have inconsistent label names or help strings for the same fully-qualified name, offender is %s", desc)
 				}
+
 			} else {
 				newDimHashesByName[desc.fqName] = desc.dimHash
 			}
+
 		}
 	}
+
+
 	// A Collector yielding no Desc at all is considered unchecked.
+	//
+	// 如果 c.Describe() 没有任何 Desc 返回，则视 c 为 "unchecked"，把它添加到 r.uncheckedCollectors[] 中，直接返回。
 	if len(newDescIDs) == 0 {
 		r.uncheckedCollectors = append(r.uncheckedCollectors, c)
 		return nil
 	}
+
+	// 如果 collectorID 已经注册到本 Registry 中，就报错返回。
 	if existing, exists := r.collectorsByID[collectorID]; exists {
 		switch e := existing.(type) {
 		case *wrappingCollector:
@@ -371,22 +457,38 @@ func (r *Registry) Register(c Collector) error {
 			}
 		}
 	}
-	// If the collectorID is new, but at least one of the descs existed
-	// before, we are in trouble.
+
+	// If the collectorID is new, but at least one of the descs existed before, we are in trouble.
+	//
+	// 如果 collectorID 尚未注册，但是该 collector 收集的 metrics 的 desc 有重复的，报个错。
+	//
+	// 这意味着，注册到同一个 registry 中的 collector 收集的 metric desc 不能重复。
+	//
 	if duplicateDescErr != nil {
 		return duplicateDescErr
 	}
 
 	// Only after all tests have passed, actually register.
+	//
+	//
+	// 将 collectorID 已经注册到本 Registry 中
 	r.collectorsByID[collectorID] = c
+
+
+	//
 	for hash := range newDescIDs {
 		r.descIDs[hash] = struct{}{}
 	}
+
 	for name, dimHash := range newDimHashesByName {
 		r.dimHashesByName[name] = dimHash
 	}
+
+
 	return nil
 }
+
+
 
 // Unregister implements Registerer.
 func (r *Registry) Unregister(c Collector) bool {
@@ -436,6 +538,8 @@ func (r *Registry) MustRegister(cs ...Collector) {
 
 // Gather implements Gatherer.
 func (r *Registry) Gather() ([]*dto.MetricFamily, error) {
+
+
 	var (
 		checkedMetricChan   = make(chan Metric, capMetricChan)
 		uncheckedMetricChan = make(chan Metric, capMetricChan)
@@ -446,24 +550,34 @@ func (r *Registry) Gather() ([]*dto.MetricFamily, error) {
 	)
 
 	r.mtx.RLock()
-	goroutineBudget := len(r.collectorsByID) + len(r.uncheckedCollectors)
-	metricFamiliesByName := make(map[string]*dto.MetricFamily, len(r.dimHashesByName))
-	checkedCollectors := make(chan Collector, len(r.collectorsByID))
-	uncheckedCollectors := make(chan Collector, len(r.uncheckedCollectors))
+
+
+
+
+	goroutineBudget 		:= len(r.collectorsByID) + len(r.uncheckedCollectors)
+	metricFamiliesByName 	:= make(map[string]*dto.MetricFamily, len(r.dimHashesByName))
+	checkedCollectors 		:= make(chan Collector, len(r.collectorsByID))
+	uncheckedCollectors 	:= make(chan Collector, len(r.uncheckedCollectors))
+
+
 	for _, collector := range r.collectorsByID {
 		checkedCollectors <- collector
 	}
+
+
 	for _, collector := range r.uncheckedCollectors {
 		uncheckedCollectors <- collector
 	}
-	// In case pedantic checks are enabled, we have to copy the map before
-	// giving up the RLock.
+
+
+	// In case pedantic checks are enabled, we have to copy the map before giving up the RLock.
 	if r.pedanticChecksEnabled {
 		registeredDescIDs = make(map[uint64]struct{}, len(r.descIDs))
 		for id := range r.descIDs {
 			registeredDescIDs[id] = struct{}{}
 		}
 	}
+
 	r.mtx.RUnlock()
 
 	wg.Add(goroutineBudget)
@@ -568,13 +682,15 @@ func (r *Registry) Gather() ([]*dto.MetricFamily, error) {
 			goroutineBudget--
 			runtime.Gosched()
 		}
-		// Once both checkedMetricChan and uncheckdMetricChan are closed
-		// and drained, the contraption above will nil out cmc and umc,
-		// and then we can leave the collect loop here.
+
+		// Once both checkedMetricChan and uncheckdMetricChan are closed and drained,
+		// the contraption above will nil out cmc and umc, and then we can leave the collect loop here.
 		if cmc == nil && umc == nil {
 			break
 		}
+
 	}
+
 	return internal.NormalizeMetricFamilies(metricFamiliesByName), errs.MaybeUnwrap()
 }
 
@@ -871,13 +987,12 @@ func checkSuffixCollisions(mf *dto.MetricFamily, mfs map[string]*dto.MetricFamil
 	return nil
 }
 
-// checkMetricConsistency checks if the provided Metric is consistent with
-// the provided MetricFamily.
+// checkMetricConsistency checks if the provided Metric is consistent with the provided MetricFamily.
 //
 // It also hashes the Metric labels and the MetricFamily name.
 //
-// If the resulting hash is already in the provided metricHashes,
-// an error is returned. If not, it is added to metricHashes.
+// If the resulting hash is already in the provided metricHashes, an error is returned.
+// If not, it is added to metricHashes.
 //
 //
 func checkMetricConsistency(
@@ -885,6 +1000,7 @@ func checkMetricConsistency(
 	dtoMetric *dto.Metric,
 	metricHashes map[uint64]struct{},
 ) error {
+
 
 	name := metricFamily.GetName()
 

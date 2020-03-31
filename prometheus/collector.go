@@ -26,15 +26,16 @@ package prometheus
 // label values) like GaugeVec or SummaryVec, and the ExpvarCollector.
 type Collector interface {
 
+
 	// Describe sends the super-set of all possible descriptors of metrics
 	// collected by this Collector to the provided channel and returns once
 	// the last descriptor has been sent. The sent descriptors fulfill the
 	// consistency and uniqueness requirements described in the Desc
 	// documentation.
 	//
-	// It is valid if one and the same Collector sends duplicate
-	// descriptors. Those duplicates are simply ignored. However, two
-	// different Collectors must not send duplicate descriptors.
+	// It is valid if one and the same Collector sends duplicate descriptors.
+	// Those duplicates are simply ignored.
+	// However, two different Collectors must not send duplicate descriptors.
 	//
 	// Sending no descriptor at all marks the Collector as “unchecked”,
 	// i.e. no checks will be performed at registration time, and the
@@ -49,53 +50,54 @@ type Collector interface {
 	// signal the error to the registry.
 
 
+	// Describe() 将此 Collector 所有可能收集的指标的描述符传递到入参管道，并在发送完最后一个描述符后返回。
+	// 发送的描述符需要满足 Desc 文档中描述的一致性和唯一性要求。
+	//
+	// 同一收集器发送重复的描述符是允许的，重复的描述符会被自动忽略。
+	// 但是两个收集器不能发送重复的描述符。
+	//
+	// 如果某 Collector 不发送任何描述符，则它被标记为 "unchecked" 状态，也就是说在注册时，
+	// 不进行任何检查，该 Collector 可以在其 Collect() 方法中产生它认为合适的任何度量。
+	//
+	// Describe() 在 Collector 的生命周期里，幂等的发送相同的描述符。
+	//
+	// 该方法可能被并发的调用，实现时需要注意线程安全问题。
+	//
+	// 如果在执行 Describe() 的过程中遇到错误，务必发送一个无效的描述符来提醒 registry 。
 
-	// 将此收集器收集的指标的所有可能的描述符发送到参数提供的通道。并且在最后一个描述符
-	// 发送成功后返回。发送的描述符必须满足Desc文档声明的一致性、唯一性要求
-	//
-	// 同一收集器发送重复的描述符是允许的，重复自动忽视
-	// 但是两个收集器不得发送重复的描述符
-	//
-	// 如果不发送任何描述符，则收集器标记为unchecked状态，也就是说在注册时，不会进行任何检查
-	// 收集器以后可能产生任何匹配它的Collect方法签名的指标
-	//
-	// 该方法在收集器的生命周期里，幂等的发送相同的描述符
-	//
-	// 该方法可能被并发的调用，实现时需要注意线程安全问题
-	//
-	// 如果在执行该方法的过程中收集器遇到错误，务必发送一个无效的描述符（NewInvalidDesc）来提示注册表
 
+	// 用于传递所有可能的指标的定义描述符，
+	// 可以在程序运行期间添加新的描述，收集新的指标信息，重复的描述符将被忽略。
+	// 两个不同的 Collector 不要设置相同的描述符
 	Describe(chan<- *Desc)
 
 
-
-
-
-	// Collect is called by the Prometheus registry when collecting
-	// metrics. The implementation sends each collected metric via the
-	// provided channel and returns once the last metric has been sent. The
-	// descriptor of each sent metric is one of those returned by Describe
+	// Collect is called by the Prometheus registry when collecting metrics.
+	// The implementation sends each collected metric via the
+	// provided channel and returns once the last metric has been sent.
+	//
+	// The descriptor of each sent metric is one of those returned by Describe
 	// (unless the Collector is unchecked, see above). Returned metrics that
-	// share the same descriptor must differ in their variable label
-	// values.
+	// share the same descriptor must differ in their variable label values.
 	//
 	// This method may be called concurrently and must therefore be
-	// implemented in a concurrency safe way. Blocking occurs at the expense
-	// of total performance of rendering all registered metrics. Ideally,
-	// Collector implementations support concurrent readers.
+	// implemented in a concurrency safe way.
+	//
+	// Blocking occurs at the expense of total performance of rendering all registered metrics.
+	//
+	// Ideally, Collector implementations support concurrent readers.
 
 
-	// 在收集指标时，该方法被Prometheus注册表（Registry）调用。方法的实现必须将所有它收集到的指标
-	// 经由参数提供的通道发送，并且在最后一个指标发送后返回。
+	// 在收集监控指标时，Collect() 方法会被 Registry 调用。
 	//
-	// 每个发送的指标的描述符，必须是Describe方法提供的之一（除非收集器是Unchecked）
-	// 发送的共享相同描述符的指标，其标签集必须有所不同
+	// Collect() 会将它收集到的所有指标传递到入参管道，并且在最后一个指标发送后返回。
 	//
+	// 每个被发送的指标的描述符必须是 Describe() 返回的描述符之一（除非 Collector 是 Unchecked 状态），
+	// 如果被发送的多个指标的描述符相同，则它们的 variable labels 必然不同。
 	//
-	// 该方法可能被并发的调用，实现时需要注意线程安全问题
-	//
-	// 阻塞会导致影响所有已注册的指标的渲染性能，理想情况下，实现应该支持并发读
-
+	// 该方法可能被并发的调用，实现时需要注意线程安全问题。
+	// 如果 Collect() 中有阻塞行为，会影响所有已注册的指标的收集。
+	// 理想情况下，实现应该支持并发读。
 
 	Collect(chan<- Metric)
 }
@@ -123,11 +125,14 @@ type Collector interface {
 //
 // The Collector example demonstrates a use of DescribeByCollect.
 func DescribeByCollect(c Collector, descs chan<- *Desc) {
+
 	metrics := make(chan Metric)
+
 	go func() {
 		c.Collect(metrics)
 		close(metrics)
 	}()
+
 	for m := range metrics {
 		descs <- m.Desc()
 	}

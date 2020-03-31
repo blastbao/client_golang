@@ -154,10 +154,10 @@ func NewDesc(fqName, help string, variableLabels []string, constLabels Labels) *
 	// Validate the const label values. They can't have a wrong cardinality,
 	// so use in len(labelValues) as expectedNumberOfValues.
 	if err := validateLabelValues(labelValues, len(labelValues)); err != nil {
+		// 如果在 NewDesc() 中构造 desc 出错，会在 Registry.Register() 时发现该错误。
 		d.err = err
 		return d
 	}
-
 
 	// Now add the variable label names, but prefix them with something that cannot be in a regular label name.
 	//
@@ -211,9 +211,6 @@ func NewDesc(fqName, help string, variableLabels []string, constLabels Labels) *
 	}
 	sort.Sort(labelPairSorter(d.constLabelPairs))
 	return d
-
-
-
 
 
 }
