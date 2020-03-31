@@ -338,16 +338,16 @@ func (r *Registry) Register(c Collector) error {
 		// 获取 c 所收集的 metrics 的 descs
 		descChan           = make(chan *Desc, capDescChan)
 
-		// 保存 c 所收集、新的 metrics 的 descIds，因为 desc 可能已经被注册，这些新的 descIds 在完成注册前会加入到 r.descIDs[] 中。
+		// 保存 c 所收集、新增的 metrics 的 descIds，因为有些 desc 可能已被注册，而新的 descIds 在完成注册前会加入到 r.descIDs[] 中。
 		newDescIDs         = map[uint64]struct{}{}
 
 		// ？
 		newDimHashesByName = map[string]uint64{}
 
-		// 计算 c 的 ID
+		// 计算 c 的 ID，该 ID 是 c.Describe() 返回的所有 desc.id (经过去重) 的异或，被当作 hash 值使用。
 		collectorID        uint64 // All desc IDs XOR'd together.
 
-		//
+		// 如果从 c.Describe() 中读到已注册的 desc ，则设置此错误
 		duplicateDescErr   error
 	)
 
@@ -367,12 +367,9 @@ func (r *Registry) Register(c Collector) error {
 
 
 	// Conduct various tests...
-
 	//
-	//
-	// 读取 collector 收集的 metrics 的 descs
+	// 从 c.Describe() 中读取 c 收集的 metrics 的 desc
 	for desc := range descChan {
-
 
 		// Is the descriptor valid at all?
 		//
@@ -385,8 +382,7 @@ func (r *Registry) Register(c Collector) error {
 		// Is the descID unique?
 		// (In other words: Is the fqName + constLabel combination unique?)
 		//
-		// 相同 desc 只保存一份
-		//
+		// 检查当前 desc.id 是否已经注册在 r.descIDs 中，若已注册，意味着其它 Collector 已经注册了相同的 desc，因此要设置错误信息。
 		if _, exists := r.descIDs[desc.id]; exists {
 			duplicateDescErr = fmt.Errorf("descriptor %s already exists with the same fully-qualified name and const label values", desc)
 		}
@@ -395,13 +391,14 @@ func (r *Registry) Register(c Collector) error {
 		// If it is not a duplicate desc in this collector, XOR it to the collectorID.
 		// (We allow duplicate descs within the same collector, but their existence must be a no-op.)
 		//
+		// 至此，意味着 desc 此前未被其它 Collector 注册，需要将 desc 注册到 r 中。
 		//
-		//
+		// 检查当前 desc.id 是否已经被添加到 newDescIDs，若已经注册，则意味着从 c.Describe() 中读到重复的 desc，忽略后面重复的。
+		// 若尚未注册，则将 desc.id 添加到 newDescIDs 中，同时更新 collectorID 的值（异或）。
 		if _, exists := newDescIDs[desc.id]; !exists {
 			newDescIDs[desc.id] = struct{}{}
-			collectorID ^= desc.id
+			collectorID ^= desc.id	// collectorID 是 c.Describe() 返回的所有 desc.id (经过去重) 的异或值。
 		}
-
 
 
 		// Are all the label names and the help string consistent with previous descriptors of the same name?
@@ -413,6 +410,7 @@ func (r *Registry) Register(c Collector) error {
 		//
 		if dimHash, exists := r.dimHashesByName[desc.fqName]; exists {
 
+			//
 			if dimHash != desc.dimHash {
 				return fmt.Errorf("a previously registered descriptor with the same fully-qualified name as %s has different label names or a different help string", desc)
 			}
@@ -436,11 +434,12 @@ func (r *Registry) Register(c Collector) error {
 
 	// A Collector yielding no Desc at all is considered unchecked.
 	//
-	// 如果 c.Describe() 没有任何 Desc 返回，则视 c 为 "unchecked"，把它添加到 r.uncheckedCollectors[] 中，直接返回。
+	// 如果 c.Describe() 没有任何 Desc 返回，则视 c 为 "unchecked"，把 c 添加到 r.uncheckedCollectors[] 中，直接返回。
 	if len(newDescIDs) == 0 {
 		r.uncheckedCollectors = append(r.uncheckedCollectors, c)
 		return nil
 	}
+
 
 	// 如果 collectorID 已经注册到本 Registry 中，就报错返回。
 	if existing, exists := r.collectorsByID[collectorID]; exists {
@@ -458,28 +457,35 @@ func (r *Registry) Register(c Collector) error {
 		}
 	}
 
+
+
 	// If the collectorID is new, but at least one of the descs existed before, we are in trouble.
 	//
-	// 如果 collectorID 尚未注册，但是该 collector 收集的 metrics 的 desc 有重复的，报个错。
+	// 至此，collectorID 尚未注册到 r 中，检查 duplicateDescErr 是否被设置。
+	// 若被设置，意味着从 c.Describe() 读取的 desc 中有的已经被其它 Collector 注册过了，
+	// 这属于错误情况，因为 prom 要求注册到同一个 registry 中的 collector 收集的 metric desc 不能重复，所以报错返回。
 	//
-	// 这意味着，注册到同一个 registry 中的 collector 收集的 metric desc 不能重复。
+	// 注意，为什么不在前面发现错误的时候就返回？
 	//
 	if duplicateDescErr != nil {
 		return duplicateDescErr
 	}
 
+
+
 	// Only after all tests have passed, actually register.
 	//
 	//
-	// 将 collectorID 已经注册到本 Registry 中
+	// 将 c 注册到 r.collectorsByID 中
 	r.collectorsByID[collectorID] = c
 
 
-	//
-	for hash := range newDescIDs {
-		r.descIDs[hash] = struct{}{}
+	// 将新增的 desc.ids 注册到 r.descIDs 中
+	for descID := range newDescIDs {
+		r.descIDs[descID] = struct{}{}
 	}
 
+	//
 	for name, dimHash := range newDimHashesByName {
 		r.dimHashesByName[name] = dimHash
 	}
@@ -497,17 +503,23 @@ func (r *Registry) Unregister(c Collector) bool {
 		descIDs     = map[uint64]struct{}{}
 		collectorID uint64 // All desc IDs XOR'd together.
 	)
+
 	go func() {
 		c.Describe(descChan)
 		close(descChan)
 	}()
+
+	// 从 c.Describe() 中读取 c 收集的 metrics 的 desc
 	for desc := range descChan {
+		// 计算 collectorID: 该值是 c.Describe() 返回的所有 desc.id (经过去重) 的异或。
+		// 这里 descIDs{} 用于去重 & 后续删除。
 		if _, exists := descIDs[desc.id]; !exists {
 			collectorID ^= desc.id
 			descIDs[desc.id] = struct{}{}
 		}
 	}
 
+	// 检查 collectorID 是否已经注册到 r 中，若未注册，则无需删除，直接返回。
 	r.mtx.RLock()
 	if _, exists := r.collectorsByID[collectorID]; !exists {
 		r.mtx.RUnlock()
@@ -518,12 +530,15 @@ func (r *Registry) Unregister(c Collector) bool {
 	r.mtx.Lock()
 	defer r.mtx.Unlock()
 
+	// 从 r.collectorsByID 中删除 collectorID
 	delete(r.collectorsByID, collectorID)
+
+	// 从 r.descIDs 中删除 descIDs
 	for id := range descIDs {
 		delete(r.descIDs, id)
 	}
-	// dimHashesByName is left untouched as those must be consistent
-	// throughout the lifetime of a program.
+
+	// dimHashesByName is left untouched as those must be consistent throughout the lifetime of a program.
 	return true
 }
 
@@ -733,65 +748,62 @@ func processMetric(
 	metricHashes map[uint64]struct{},
 	registeredDescIDs map[uint64]struct{},
 ) error {
+
+
 	desc := metric.Desc()
-	// Wrapped metrics collected by an unchecked Collector can have an
-	// invalid Desc.
+
+	// Wrapped metrics collected by an unchecked Collector can have an invalid Desc.
 	if desc.err != nil {
 		return desc.err
 	}
+
+
 	dtoMetric := &dto.Metric{}
 	if err := metric.Write(dtoMetric); err != nil {
 		return fmt.Errorf("error collecting metric %v: %s", desc, err)
 	}
+
+
 	metricFamily, ok := metricFamiliesByName[desc.fqName]
 	if ok { // Existing name.
+
+
 		if metricFamily.GetHelp() != desc.help {
-			return fmt.Errorf(
-				"collected metric %s %s has help %q but should have %q",
-				desc.fqName, dtoMetric, desc.help, metricFamily.GetHelp(),
-			)
+			return fmt.Errorf("collected metric %s %s has help %q but should have %q", desc.fqName, dtoMetric, desc.help, metricFamily.GetHelp())
 		}
+
 		// TODO(beorn7): Simplify switch once Desc has type.
 		switch metricFamily.GetType() {
 		case dto.MetricType_COUNTER:
 			if dtoMetric.Counter == nil {
-				return fmt.Errorf(
-					"collected metric %s %s should be a Counter",
-					desc.fqName, dtoMetric,
-				)
+				return fmt.Errorf("collected metric %s %s should be a Counter", desc.fqName, dtoMetric, )
 			}
 		case dto.MetricType_GAUGE:
 			if dtoMetric.Gauge == nil {
-				return fmt.Errorf(
-					"collected metric %s %s should be a Gauge",
-					desc.fqName, dtoMetric,
-				)
+				return fmt.Errorf("collected metric %s %s should be a Gauge", desc.fqName, dtoMetric, )
 			}
 		case dto.MetricType_SUMMARY:
 			if dtoMetric.Summary == nil {
-				return fmt.Errorf(
-					"collected metric %s %s should be a Summary",
-					desc.fqName, dtoMetric,
-				)
+				return fmt.Errorf("collected metric %s %s should be a Summary", desc.fqName, dtoMetric, )
 			}
 		case dto.MetricType_UNTYPED:
 			if dtoMetric.Untyped == nil {
-				return fmt.Errorf(
-					"collected metric %s %s should be Untyped",
-					desc.fqName, dtoMetric,
-				)
+				return fmt.Errorf("collected metric %s %s should be Untyped", desc.fqName, dtoMetric, )
 			}
 		case dto.MetricType_HISTOGRAM:
 			if dtoMetric.Histogram == nil {
-				return fmt.Errorf(
-					"collected metric %s %s should be a Histogram",
-					desc.fqName, dtoMetric,
-				)
+				return fmt.Errorf("collected metric %s %s should be a Histogram", desc.fqName, dtoMetric, )
 			}
 		default:
 			panic("encountered MetricFamily with invalid type")
 		}
+
+
+
 	} else { // New name.
+
+
+
 		metricFamily = &dto.MetricFamily{}
 		metricFamily.Name = proto.String(desc.fqName)
 		metricFamily.Help = proto.String(desc.help)
@@ -810,26 +822,35 @@ func processMetric(
 		default:
 			return fmt.Errorf("empty metric collected: %s", dtoMetric)
 		}
+
 		if err := checkSuffixCollisions(metricFamily, metricFamiliesByName); err != nil {
 			return err
 		}
+
 		metricFamiliesByName[desc.fqName] = metricFamily
+
 	}
+
+
 	if err := checkMetricConsistency(metricFamily, dtoMetric, metricHashes); err != nil {
 		return err
 	}
+
+
 	if registeredDescIDs != nil {
+
 		// Is the desc registered at all?
 		if _, exist := registeredDescIDs[desc.id]; !exist {
-			return fmt.Errorf(
-				"collected metric %s %s with unregistered descriptor %s",
-				metricFamily.GetName(), dtoMetric, desc,
-			)
+			return fmt.Errorf("collected metric %s %s with unregistered descriptor %s", metricFamily.GetName(), dtoMetric, desc, )
 		}
+
 		if err := checkDescConsistency(metricFamily, dtoMetric, desc); err != nil {
 			return err
 		}
+
 	}
+
+
 	metricFamily.Metric = append(metricFamily.Metric, dtoMetric)
 	return nil
 }
@@ -1105,6 +1126,7 @@ func checkDescConsistency(
 	if len(lpsFromDesc) != len(dtoMetric.Label) {
 		return fmt.Errorf("labels in collected metric %s %s are inconsistent with descriptor %s", metricFamily.GetName(), dtoMetric, desc, )
 	}
+
 	sort.Sort(labelPairSorter(lpsFromDesc))
 	for i, lpFromDesc := range lpsFromDesc {
 		lpFromMetric := dtoMetric.Label[i]
