@@ -190,7 +190,7 @@ func (m *metricVec) curryWith(labels Labels) (*metricVec, error) {
 func (m *metricVec) getMetricWithLabelValues(lvs ...string) (Metric, error) {
 
 
-	// 根据 label values 计算出一个 hash 值，相同的 '标签值组合' 对应相同的 hash 值
+	// 根据 label values 计算出一个 hash 值，相同的 '标签键值对组合' 对应相同的 hash 值
 	h, err := m.hashLabelValues(lvs)
 	if err != nil {
 		return nil, err
@@ -202,19 +202,26 @@ func (m *metricVec) getMetricWithLabelValues(lvs ...string) (Metric, error) {
 	return m.metricMap.getOrCreateMetricWithLabelValues(h, lvs, m.curry), nil
 }
 
+
+// 从 metricVec.metricMap.metrics{} 中取出 labels 对应的 Metric
 func (m *metricVec) getMetricWith(labels Labels) (Metric, error) {
+
+	// 根据 labels 计算出一个 hash 值，作为这组标签的唯一标识。
 	h, err := m.hashLabels(labels)
 	if err != nil {
 		return nil, err
 	}
 
+	// 根据 hash 值取出关联的一组 Metrics，这组 Metrics 的标签值组合具有相同的 hash 值，
+	// 因此相同 hash 值的标签值组合有可能已经存在于 Metrics 中。
+	//
+	// 然后遍历 Metrics ，用 labels 去逐个匹配其中的 Metric，
+	// 若其中某个 Metric 的标签值组合和 labels 完全一致，就返回该 Metric ，否则返回 nil
 	return m.metricMap.getOrCreateMetricWithLabels(h, labels, m.curry), nil
 }
 
 
-
-
-// 根据 label values 计算出一个 hash 值
+// 根据 label values 计算出一个 hash 值，作为这组标签的唯一标识
 func (m *metricVec) hashLabelValues(vals []string) (uint64, error) {
 
 
@@ -257,6 +264,8 @@ func (m *metricVec) hashLabelValues(vals []string) (uint64, error) {
 
 }
 
+
+// 根据 labels 计算出一个 hash 值，作为这组标签的唯一标识
 func (m *metricVec) hashLabels(labels Labels) (uint64, error) {
 
 

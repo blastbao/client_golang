@@ -197,14 +197,21 @@ func (c *counter) updateExemplar(v float64, l Labels) {
 // CounterVec is a Collector that bundles a set of Counters that all share the same Desc,
 // but have different values for their variable labels.
 //
+// CounterVec 是一个 Collector ，它维护着一组使用相同 Desc 的 Counter ，因此这些 Counter 具有相同
+// 的 variableLabels、constLabels 标签，但是各个标签的取值则可能不同。
+//
 //
 // This is used if you want to count the same thing partitioned by various dimensions
 // (e.g. number of HTTP requests, partitioned by response code and method).
 //
+// 如果你想对同一个指标的不同维度进行计数，则可以使用此对象。
+// 例如，对 HTTP 请求按 响应码 和 方法 进行分别统计。
+//
 // Create instances with NewCounterVec.
 type CounterVec struct {
-	*metricVec
+	*metricVec // metricVec 实现了 Collector 接口，所以 CounterVec 也实现了 Collector 接口
 }
+
 
 // NewCounterVec creates a new CounterVec based on the provided CounterOpts and
 // partitioned by the given label names.
@@ -250,10 +257,14 @@ func NewCounterVec(opts CounterOpts, labelNames []string) *CounterVec {
 
 // GetMetricWithLabelValues returns the Counter for the given slice of label values
 // (same order as the VariableLabels in Desc).
-// GetMetricWithLabelValues 返回与给定的标签值数组对应的 Counter 计数器。（与 Desc 中的变量标签的顺序相同）
+//
+// GetMetricWithLabelValues 返回与给定的标签值（数组）对应的 Counter 计数器。
+// （与 Desc 中的 VariableLabels 标签的顺序相同）
+//
 //
 // If that combination of label values is accessed for the first time,
 // a new Counter is created.
+//
 // 如果当前这组标签值是第一次被访问，将创建一个新 Counter 计数器。
 //
 //
@@ -263,35 +274,40 @@ func NewCounterVec(opts CounterOpts, labelNames []string) *CounterVec {
 // See also the SummaryVec example.
 //
 //
-//
 // Keeping the Counter for later use is possible (and should be considered if
 // performance is critical), but keep in mind that Reset, DeleteLabelValues and
 // Delete can be used to delete the Counter from the CounterVec.
 //
+// 可以保留 Counter 以便以后使用（如果性能至关重要，则需要考虑），但请记住，
+// 可以使用 Reset，DeleteLabelValues 和 Delete从CounterVec 来从 CounterVec 中删除 Counter 。
 //
 //
 // In that case, the Counter will still exist, but it will not be exported anymore,
 // even if a Counter with the same label values is created later.
 //
+// 在这种情况下，即使以后创建具有相同标签值的 Counter ，该 Counter 仍将存在，但不再导出。
+//
 //
 // An error is returned if the number of label values is not the same as the
 // number of VariableLabels in Desc (minus any curried labels).
 //
+// 如果标签值的数量与 Desc 中的 VariableLabels 的数量（减去任何已固化的标签）不同，则返回错误。
 //
 //
 // Note that for more than one label value, this method is prone to mistakes
 // caused by an incorrect order of arguments.
+//
+// 请注意，对于多个标签值，此方法很容易因参数顺序错误而导致错误。
 //
 //
 // Consider GetMetricWith(Labels) as an alternative to avoid that type of mistake.
 // For higher label numbers, the latter has a much more readable (albeit more verbose) syntax,
 // but it comes with a performance overhead (for creating and processing the Labels map).
 //
+// 考虑使用 GetMetricWith(Labels) 作为替代方案来避免这种类型的错误。
+// 对于更多的标签，后者具有更易读（尽管更冗长）的语法，但是它会带来性能开销（用于创建和处理 Labels map）。
 //
 // See also the GaugeVec example.
-//
-//
-//
 func (v *CounterVec) GetMetricWithLabelValues(lvs ...string) (Counter, error) {  // lvs => label values
 
 	//
@@ -301,29 +317,38 @@ func (v *CounterVec) GetMetricWithLabelValues(lvs ...string) (Counter, error) { 
 	}
 
 
-
 	return nil, err
 }
 
 // GetMetricWith returns the Counter for the given Labels map (the label names
 // must match those of the VariableLabels in Desc).
+// GetMetricWith 返回给定 Labels map 对应的的 Counter（标签名称必须与 Desc 中的 VariableLabels 相匹配）。
 //
 // If that label map is accessed for the first time, a new Counter is created.
+// 如果是第一次访问该 label map ，则会创建一个新的计数器。
 //
 // Implications of creating a Counter without using it and keeping the Counter
 // for later use are the same as for GetMetricWithLabelValues.
+// 可以创建 Counter 但不使用，仅保留该 Counter 供以后使用。这个逻辑与 GetMetricWithLabelValues 相同。
 //
 // An error is returned if the number and names of the Labels are inconsistent
 // with those of the VariableLabels in Desc (minus any curried labels).
+// 如果标签的 ID 和 name 与 Desc 中的 VariableLabels（减去任何已固化的标签） 不一致，则会返回错误。
 //
 // This method is used for the same purpose as GetMetricWithLabelValues(...string).
+// 此方法的用途与 GetMetricWithLabelValues(...string) 相同。
 //
 // See there for pros and cons of the two methods.
+// 可以查看 GetMetricWithLabelValues 的注释对比这两种方法的优缺点。
+//
 func (v *CounterVec) GetMetricWith(labels Labels) (Counter, error) {
+
+	// 从 metricVec.metricMap.metrics{} 中取出 labels 对应的 Metric
 	metric, err := v.metricVec.getMetricWith(labels)
 	if metric != nil {
 		return metric.(Counter), err
 	}
+
 	return nil, err
 }
 
