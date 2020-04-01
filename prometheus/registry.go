@@ -475,7 +475,6 @@ func (r *Registry) Register(c Collector) error {
 
 	// Only after all tests have passed, actually register.
 	//
-	//
 	// 将 c 注册到 r.collectorsByID 中
 	r.collectorsByID[collectorID] = c
 
@@ -556,8 +555,12 @@ func (r *Registry) Gather() ([]*dto.MetricFamily, error) {
 
 
 	var (
+		// 用于汇总 checked collectors 收集到的所有指标
 		checkedMetricChan   = make(chan Metric, capMetricChan)
+		// 用于汇总 unchecked collectors 收集到的所有指标
 		uncheckedMetricChan = make(chan Metric, capMetricChan)
+
+
 		metricHashes        = map[uint64]struct{}{}
 		wg                  sync.WaitGroup
 		errs                MultiError          // The collected errors to return in the end.
@@ -567,23 +570,23 @@ func (r *Registry) Gather() ([]*dto.MetricFamily, error) {
 	r.mtx.RLock()
 
 
-
-
+	// 可能存在多个 collectors，为提高指标收集效率，需要并发收集，这里 goroutineBudget 为最高并发度，
+	// 其值为 collectors 的总数，也即最高并发下，每个 collector 一个收集协程。
 	goroutineBudget 		:= len(r.collectorsByID) + len(r.uncheckedCollectors)
+
+
+	// 所有被收集的 metrics 会被汇总到 metricFamiliesByName 中
 	metricFamiliesByName 	:= make(map[string]*dto.MetricFamily, len(r.dimHashesByName))
+
+
 	checkedCollectors 		:= make(chan Collector, len(r.collectorsByID))
 	uncheckedCollectors 	:= make(chan Collector, len(r.uncheckedCollectors))
-
-
 	for _, collector := range r.collectorsByID {
 		checkedCollectors <- collector
 	}
-
-
 	for _, collector := range r.uncheckedCollectors {
 		uncheckedCollectors <- collector
 	}
-
 
 	// In case pedantic checks are enabled, we have to copy the map before giving up the RLock.
 	if r.pedanticChecksEnabled {
@@ -595,9 +598,19 @@ func (r *Registry) Gather() ([]*dto.MetricFamily, error) {
 
 	r.mtx.RUnlock()
 
+	// 一共有 goroutineBudget 个 collector 待收集，每收集完一个 collector 就 wg.Done()
 	wg.Add(goroutineBudget)
 
+
+	// 这里 collectWorker 会从 checkedCollectors/uncheckedCollectors 中获取 collector ，并调用 collector.Collect() 执行指标收集工作。
 	collectWorker := func() {
+
+		// collector.Collect() 会把 collector 收集的指标传递到入参管道，并且在最后一个指标发送后 return 返回，该函数执行是同步、阻塞的。
+
+
+		// 注意，这里 for loop 每次调用一个 collector 的 Collect() 函数执行同步、阻塞式的指标收集，是串行的执行。
+		// 如果 collector 较多，或者某个 collector 的收集较慢，那么会影响整体的指标收集效率，因此需要启动多个 collectWorker 协程并行收集。
+
 		for {
 			select {
 			case collector := <-checkedCollectors:
@@ -605,23 +618,33 @@ func (r *Registry) Gather() ([]*dto.MetricFamily, error) {
 			case collector := <-uncheckedCollectors:
 				collector.Collect(uncheckedMetricChan)
 			default:
+				// 如果 checkedCollectors 和 uncheckedCollectors 发生阻塞，意味着没有新的 collector 需要收集，直接 return 。
 				return
 			}
+			// 每执行完一个 collector 的收集，就 wg.Done
 			wg.Done()
 		}
 	}
 
+
+
 	// Start the first worker now to make sure at least one is running.
+	//
+	// 启动第一个收集协程，确保至少有一个正在运行。
 	go collectWorker()
+
+	// 每启动一个收集协程，就 goroutineBudget--，当 goroutineBudget == 0 时不再启动新协程。
 	goroutineBudget--
 
-	// Close checkedMetricChan and uncheckedMetricChan once all collectors
-	// are collected.
+	// Close checkedMetricChan and uncheckedMetricChan once all collectors are collected.
 	go func() {
+		// 如果 wg.Wait() 返回，意味着所有的 collector 均收集完毕
 		wg.Wait()
+		// 注意，这两个管道是同时关闭的
 		close(checkedMetricChan)
 		close(uncheckedMetricChan)
 	}()
+
 
 	// Drain checkedMetricChan and uncheckedMetricChan in case of premature return.
 	defer func() {
@@ -635,41 +658,80 @@ func (r *Registry) Gather() ([]*dto.MetricFamily, error) {
 		}
 	}()
 
-	// Copy the channel references so we can nil them out later to remove
-	// them from the select statements below.
+	// Copy the channel references so we can nil them out later to remove them from the select statements below.
 	cmc := checkedMetricChan
 	umc := uncheckedMetricChan
 
+	// 调用 collector.Collect() 收集指标是同步、阻塞的，因此需要并发收集，但是汇总操作比较快，这里直接在 for loop 内处理。
+
 	for {
+
 		select {
+
 		case metric, ok := <-cmc:
+
+			// cmc is closed
 			if !ok {
 				cmc = nil
 				break
 			}
-			errs.Append(processMetric(
-				metric, metricFamiliesByName,
+
+			// 把 metric 汇总到 metricFamiliesByName 中
+			err := processMetric(
+				metric,
+				metricFamiliesByName,
 				metricHashes,
 				registeredDescIDs,
-			))
+			)
+
+			// 错误信息汇总
+			errs.Append(err)
+
 		case metric, ok := <-umc:
+
+			// umc is closed
 			if !ok {
 				umc = nil
 				break
 			}
-			errs.Append(processMetric(
-				metric, metricFamiliesByName,
+
+			// 把 metric 汇总到 metricFamiliesByName 中
+			err := processMetric(
+				metric,
+				metricFamiliesByName,
 				metricHashes,
 				nil,
-			))
+			)
+
+			// 错误信息汇总
+			errs.Append(err)
+
 		default:
+
+
+			// 运行到这，意味着 cmc 和 umc 发生阻塞，可能是 metrics 的生产速度不足，
+			//
+			//（1）如果此时 goroutineBudget > 0 且存在尚未被收集的 collector，则新增收集协程；
+			//（2）如果此时已经启动了足够多的收集协程（每个 collector 一个协程），或者不存在未被收集的 collector，
+			// 	  则启动新协程没有意义，只能同步阻塞的去等待 cmc、umc 中的指标数据，直到它们被关闭，结束收集。
+			//
+			//
+			//
+
+
+			// len(channel): 返回管道 channel 中未读数据的个数。
 			if goroutineBudget <= 0 || len(checkedCollectors)+len(uncheckedCollectors) == 0 {
-				// All collectors are already being worked on or
-				// we have already as many goroutines started as
-				// there are collectors. Do the same as above,
-				// just without the default.
+
+
+				// All collectors are already being worked on or we have already as many goroutines started as there are collectors.
+				// Do the same as above, just without the default.
+
+				//
+				//
+				//
 				select {
 				case metric, ok := <-cmc:
+
 					if !ok {
 						cmc = nil
 						break
@@ -692,22 +754,38 @@ func (r *Registry) Gather() ([]*dto.MetricFamily, error) {
 				}
 				break
 			}
+
 			// Start more workers.
+			//
+			// 新增收集协程，提高指标收集速率
 			go collectWorker()
+
+			// 每启动一个收集协程，就 goroutineBudget--，当 goroutineBudget == 0 时不再启动新协程。
 			goroutineBudget--
+
+			// 每启动一个新协程，可以通过 Gosched() 给新协程运行的机会。
 			runtime.Gosched()
+
 		}
 
 		// Once both checkedMetricChan and uncheckdMetricChan are closed and drained,
 		// the contraption above will nil out cmc and umc, and then we can leave the collect loop here.
+
 		if cmc == nil && umc == nil {
 			break
 		}
 
 	}
 
+	// 把 metricFamiliesByName 排序后以数组形式返回
 	return internal.NormalizeMetricFamilies(metricFamiliesByName), errs.MaybeUnwrap()
 }
+
+
+
+
+
+
 
 // WriteToTextfile calls Gather on the provided Gatherer, encodes the result in the
 // Prometheus text format, and writes it to a temporary file. Upon success, the
@@ -741,6 +819,10 @@ func WriteToTextfile(filename string, g Gatherer) error {
 	return os.Rename(tmp.Name(), filename)
 }
 
+
+
+
+
 // processMetric is an internal helper method only used by the Gather method.
 func processMetric(
 	metric Metric,
@@ -749,22 +831,27 @@ func processMetric(
 	registeredDescIDs map[uint64]struct{},
 ) error {
 
-
+	//
 	desc := metric.Desc()
 
 	// Wrapped metrics collected by an unchecked Collector can have an invalid Desc.
+	//
+	//
 	if desc.err != nil {
 		return desc.err
 	}
 
 
+	// convert from Metric to *dto.Metric
 	dtoMetric := &dto.Metric{}
 	if err := metric.Write(dtoMetric); err != nil {
 		return fmt.Errorf("error collecting metric %v: %s", desc, err)
 	}
 
-
+	//
 	metricFamily, ok := metricFamiliesByName[desc.fqName]
+
+
 	if ok { // Existing name.
 
 
@@ -823,6 +910,7 @@ func processMetric(
 			return fmt.Errorf("empty metric collected: %s", dtoMetric)
 		}
 
+		//
 		if err := checkSuffixCollisions(metricFamily, metricFamiliesByName); err != nil {
 			return err
 		}
@@ -831,12 +919,12 @@ func processMetric(
 
 	}
 
-
+	//
 	if err := checkMetricConsistency(metricFamily, dtoMetric, metricHashes); err != nil {
 		return err
 	}
 
-
+	//
 	if registeredDescIDs != nil {
 
 		// Is the desc registered at all?
@@ -850,7 +938,7 @@ func processMetric(
 
 	}
 
-
+	//
 	metricFamily.Metric = append(metricFamily.Metric, dtoMetric)
 	return nil
 }
