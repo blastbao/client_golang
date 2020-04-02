@@ -32,12 +32,14 @@ import (
 //
 type metricVec struct {
 
-	// hash => metrics
-	*metricMap
+	// hash(labels) => metrics
+	*metricMap					// metricMap 实现了 Collector 接口
 
-	// 所有指标实例（值+标签集）
+
+
+
+	// ...
 	curry []curriedLabelValue
-
 
 	// hashAdd and hashAddByte can be replaced for testing collision handling.
 	hashAdd     func(h uint64, s string) uint64
@@ -92,6 +94,7 @@ func (m *metricVec) DeleteLabelValues(lvs ...string) bool {
 	if err != nil {
 		return false
 	}
+
 	//
 	return m.metricMap.deleteByHashWithLabelValues(h, lvs, m.curry)
 }
@@ -216,7 +219,7 @@ func (m *metricVec) getMetricWith(labels Labels) (Metric, error) {
 	// 因此相同 hash 值的标签值组合有可能已经存在于 Metrics 中。
 	//
 	// 然后遍历 Metrics ，用 labels 去逐个匹配其中的 Metric，
-	// 若其中某个 Metric 的标签值组合和 labels 完全一致，就返回该 Metric ，否则返回 nil
+	// 若其中某个 Metric 的标签值组合和 labels 完全一致，就返回该 Metric ，否则返新建一个并返回
 	return m.metricMap.getOrCreateMetricWithLabels(h, labels, m.curry), nil
 }
 
@@ -327,15 +330,17 @@ type metricMap struct {
 
 	mtx       sync.RWMutex // Protects metrics.
 
-
 	// hash => metrics
 	//
 	// 标签值组合具有相同的 hash 值的 metric 存储在 metrics[hash] 中，
 	// 因此，相同 hash 值的标签组合则可能已存在于 metrics 中，以此来加速查询，减少对象创建。
 	metrics   map[uint64] []metricWithLabelValues
 
-	//
+
+	// metricMap 中的 Metrics 具有相同的 variable/const 标签，只是标签的取值可能不同。
+	// 因此，这些 Metrics 共享同一个 Desc
 	desc      *Desc
+
 
 	//
 	newMetric func(labelValues ...string) Metric // 以指定的标签值创建新 Metric
@@ -375,7 +380,6 @@ func (m *metricMap) Reset() {
 }
 
 
-
 // deleteByHashWithLabelValues removes the metric from the hash bucket h.
 //
 // If there are multiple matches in the bucket, use lvs to select a metric and remove only that metric.
@@ -393,11 +397,13 @@ func (m *metricMap) deleteByHashWithLabelValues(h uint64, lvs []string, curry []
 		return false
 	}
 
+	//
 	i := findMetricWithLabelValues(metrics, lvs, curry)
 	if i >= len(metrics) {
 		return false
 	}
 
+	//
 	if len(metrics) > 1 {
 		m.metrics[h] = append(metrics[:i], metrics[i+1:]...)
 	} else {
@@ -422,7 +428,7 @@ func (m *metricMap) deleteByHashWithLabels(h uint64, labels Labels, curry []curr
 		return false
 	}
 
-	// 遍历 metrics，如果某个 metric 的标签值组合和 labels 完全一致，就返回其索引下标，否则返回 len(metrics)
+	// 遍历 metrics，如果某个 metric 的标签值组合和 labels 完全一致，就返回其索引下标 i ，否则返回 len(metrics)
 	i := findMetricWithLabels(m.desc, metrics, labels, curry)
 
 	// 不存在匹配的 metric ，则无法删除，返回 false
@@ -469,7 +475,6 @@ func (m *metricMap) getOrCreateMetricWithLabelValues(hash uint64, lvs []string, 
 		// 若 m.metrics[hash] 中不存在 lvs 匹配的 metric，往 m.metrics[hash] 中添加新 metric
 		inlinedLVs := inlineLabelValues(lvs, curry)
 		metric = m.newMetric(inlinedLVs...)
-
 		m.metrics[hash] = append(m.metrics[hash], metricWithLabelValues{values: inlinedLVs, metric: metric})
 	}
 

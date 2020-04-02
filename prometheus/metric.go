@@ -29,9 +29,10 @@ var separatorByteSlice = []byte{model.SeparatorByte} // For convenient use with 
 
 // A Metric models a single sample value with its meta data being exported to Prometheus.
 //
+//
+//
 // Implementations of Metric in this package are Gauge, Counter, Histogram, Summary, and Untyped.
 type Metric interface {
-
 
 	// Desc returns the descriptor for the Metric.
 	//
@@ -40,7 +41,6 @@ type Metric interface {
 	// The returned descriptor is immutable by contract.
 	//
 	// A Metric unable to describe itself must return an invalid descriptor (created with NewInvalidDesc).
-
 
 	// 幂等的返回该指标的、不可变的描述符
 	// 不能描述自己的指标，必须返回一个无效的描述符。

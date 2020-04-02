@@ -378,7 +378,6 @@ func (r *Registry) Register(c Collector) error {
 			return fmt.Errorf("descriptor %s is invalid: %s", desc, desc.err)
 		}
 
-
 		// Is the descID unique?
 		// (In other words: Is the fqName + constLabel combination unique?)
 		//
@@ -386,7 +385,6 @@ func (r *Registry) Register(c Collector) error {
 		if _, exists := r.descIDs[desc.id]; exists {
 			duplicateDescErr = fmt.Errorf("descriptor %s already exists with the same fully-qualified name and const label values", desc)
 		}
-
 
 		// If it is not a duplicate desc in this collector, XOR it to the collectorID.
 		// (We allow duplicate descs within the same collector, but their existence must be a no-op.)
@@ -598,7 +596,7 @@ func (r *Registry) Gather() ([]*dto.MetricFamily, error) {
 
 	r.mtx.RUnlock()
 
-	// 一共有 goroutineBudget 个 collector 待收集，每收集完一个 collector 就 wg.Done()
+	// 一共有 goroutineBudget 个 collector 待收集，每收集完一个 collector 就 wg.Done() 一次
 	wg.Add(goroutineBudget)
 
 
@@ -787,35 +785,52 @@ func (r *Registry) Gather() ([]*dto.MetricFamily, error) {
 
 
 
-// WriteToTextfile calls Gather on the provided Gatherer, encodes the result in the
-// Prometheus text format, and writes it to a temporary file. Upon success, the
-// temporary file is renamed to the provided filename.
+// WriteToTextfile calls Gather on the provided Gatherer, encodes the result in
+// the Prometheus text format, and writes it to a temporary file.
+// Upon success, the temporary file is renamed to the provided filename.
+//
+// 调用 g.Gather() 收集指标，将结果编码为 Prometheus 文本格式， 并写入临时文件。
+// 一旦写入成功，临时文件将被重命名为指定文件名。
+//
 //
 // This is intended for use with the textfile collector of the node exporter.
 // Note that the node exporter expects the filename to be suffixed with ".prom".
+//
+//
 func WriteToTextfile(filename string, g Gatherer) error {
+
+	// 构造临时文件
 	tmp, err := ioutil.TempFile(filepath.Dir(filename), filepath.Base(filename))
 	if err != nil {
 		return err
 	}
 	defer os.Remove(tmp.Name())
 
+
+	// 收集指标
 	mfs, err := g.Gather()
 	if err != nil {
 		return err
 	}
+
+	// 以 Prometheus 文本格式写入临时文件
 	for _, mf := range mfs {
 		if _, err := expfmt.MetricFamilyToText(tmp, mf); err != nil {
 			return err
 		}
 	}
+
+	// 关闭临时文件
 	if err := tmp.Close(); err != nil {
 		return err
 	}
 
+	// 修改权限
 	if err := os.Chmod(tmp.Name(), 0644); err != nil {
 		return err
 	}
+
+	// 重命名
 	return os.Rename(tmp.Name(), filename)
 }
 

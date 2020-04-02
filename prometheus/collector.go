@@ -14,8 +14,11 @@
 package prometheus
 
 // Collector is the interface implemented by anything that can be used by
-// Prometheus to collect metrics. A Collector has to be registered for
-// collection. See Registerer.Register.
+// Prometheus to collect metrics.
+//
+// A Collector has to be registered for collection.
+//
+// See Registerer.Register.
 //
 // The stock metrics provided by this package (Gauge, Counter, Summary,
 // Histogram, Untyped) are also Collectors (which only ever collect one metric,
@@ -102,28 +105,41 @@ type Collector interface {
 	Collect(chan<- Metric)
 }
 
-// DescribeByCollect is a helper to implement the Describe method of a custom
-// Collector. It collects the metrics from the provided Collector and sends
-// their descriptors to the provided channel.
+
+
+
+// DescribeByCollect is a helper to implement the Describe method of a custom Collector.
 //
-// If a Collector collects the same metrics throughout its lifetime, its
-// Describe method can simply be implemented as:
+// It collects the metrics from the provided Collector and sends their descriptors to the provided channel.
+//
+// If a Collector collects the same metrics throughout its lifetime,
+// its Describe method can simply be implemented as:
 //
 //   func (c customCollector) Describe(ch chan<- *Desc) {
 //   	DescribeByCollect(c, ch)
 //   }
 //
-// However, this will not work if the metrics collected change dynamically over
-// the lifetime of the Collector in a way that their combined set of descriptors
-// changes as well. The shortcut implementation will then violate the contract
-// of the Describe method. If a Collector sometimes collects no metrics at all
-// (for example vectors like CounterVec, GaugeVec, etc., which only collect
-// metrics after a metric with a fully specified label set has been accessed),
-// it might even get registered as an unchecked Collector (cf. the Register
-// method of the Registerer interface). Hence, only use this shortcut
-// implementation of Describe if you are certain to fulfill the contract.
+//
+//
+// However, this will not work if the metrics collected change dynamically over the lifetime
+// of the Collector in a way that their combined set of descriptors changes as well.
+// The shortcut implementation will then violate the contract of the Describe method.
+//
+// 如果 Collector 收集的指标在整个生命周期中会动态变化，且关联的描述符也动态变化，则此方式不适用。
+// 这种实现将违反 Describe 方法的约定。
+//
+//
+//
+//
+// If a Collector sometimes collects no metrics at all (for example vectors like CounterVec, GaugeVec, etc.,
+// which only collect metrics after a metric with a fully specified label set has been accessed),
+//
+// it might even get registered as an unchecked Collector (cf. the Register method of the Registerer interface).
+// Hence, only use this shortcut implementation of Describe if you are certain to fulfill the contract.
 //
 // The Collector example demonstrates a use of DescribeByCollect.
+//
+//
 func DescribeByCollect(c Collector, descs chan<- *Desc) {
 
 	metrics := make(chan Metric)
@@ -138,9 +154,14 @@ func DescribeByCollect(c Collector, descs chan<- *Desc) {
 	}
 }
 
-// selfCollector implements Collector for a single Metric so that the Metric
-// collects itself. Add it as an anonymous field to a struct that implements
-// Metric, and call init with the Metric itself as an argument.
+
+// selfCollector implements Collector for a single Metric so that the Metric collects itself.
+// Add it as an anonymous field to a struct that implements Metric,
+// and call init with the Metric itself as an argument.
+//
+// 任何实现 Metric 的对象，通过匿名包含 selfCollector 结构体并调用 init(self) 函数，
+// 便能实现 Collect 接口，以便能被 registry 收集。
+//
 type selfCollector struct {
 	self Metric
 }

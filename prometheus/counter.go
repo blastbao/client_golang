@@ -33,8 +33,8 @@ import (
 // To create Counter instances, use NewCounter.
 
 type Counter interface {
-	Metric
-	Collector
+	Metric			// 实现 Metric 接口，则可以被 Collector 导出给 Registry
+	Collector		// 实现 Collector 接口，则可以被 Registry 收集
 
 	// Inc increments the counter by 1.
 	//
@@ -100,6 +100,14 @@ func NewCounter(opts CounterOpts) Counter {
 		now: time.Now,
 	}
 
+	// 这里的 init 调用看着比较诡异，因为 counter 本身实现了 Metric 接口，
+	// 又通过匿名包含 selfCollector 实现 Collector 接口，这里 init 实际上就是
+	// 使 result 的 Collector 接口函数 Describe()/Collect() 能够正确运行：
+	//	（1）result.Describe() 返回 result.Desc()
+	// 	（2）result.Collect()  返回 result 本身
+	//
+	// 所以，counter 能够被 registry 收集和导出。
+	//
 	result.init(result) // Init self-collection.
 
 	return result
@@ -115,7 +123,12 @@ type counter struct {
 	valBits uint64
 	valInt  uint64
 
+
+
+	// 通过匿名包含 selfCollector 以实现 Collector 接口
 	selfCollector
+
+
 	desc *Desc
 
 	labelPairs []*dto.LabelPair
@@ -209,7 +222,7 @@ func (c *counter) updateExemplar(v float64, l Labels) {
 //
 // Create instances with NewCounterVec.
 type CounterVec struct {
-	*metricVec // metricVec 实现了 Collector 接口，所以 CounterVec 也实现了 Collector 接口
+	*metricVec // metricVec 实现了 Collector 接口，所以 CounterVec 也实现了 Collector 接口，可以被 Registry 收集
 }
 
 
@@ -246,13 +259,6 @@ func NewCounterVec(opts CounterOpts, labelNames []string) *CounterVec {
 		metricVec: newMetricVec(desc, newCounterMetric),
 	}
 }
-
-
-
-
-
-
-
 
 
 // GetMetricWithLabelValues returns the Counter for the given slice of label values
@@ -343,7 +349,7 @@ func (v *CounterVec) GetMetricWithLabelValues(lvs ...string) (Counter, error) { 
 //
 func (v *CounterVec) GetMetricWith(labels Labels) (Counter, error) {
 
-	// 从 metricVec.metricMap.metrics{} 中取出 labels 对应的 Metric
+	// 从 metricVec.metricMap.metrics{hash->Metrics} 中取出同 labels 一致的 Metric
 	metric, err := v.metricVec.getMetricWith(labels)
 	if metric != nil {
 		return metric.(Counter), err
