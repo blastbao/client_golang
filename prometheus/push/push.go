@@ -61,6 +61,9 @@ type HTTPDoer interface {
 	Do(*http.Request) (*http.Response, error)
 }
 
+
+
+
 // Pusher manages a push to the Pushgateway.
 //
 // Use New to create one, configure it with its methods, and finally use the Add or Push method to push.
@@ -71,19 +74,31 @@ type Pusher struct {
 	url string
 	job string
 
+
+	//
 	grouping map[string]string
 
+
+	//
 	gatherers  prometheus.Gatherers
+
+	//
 	registerer prometheus.Registerer
 
+
+	// http client
 	client             HTTPDoer
 	useBasicAuth       bool
 	username, password string
 
+
+	// 编码格式
 	expfmt expfmt.Format
 }
 
+
 // New creates a new Pusher to push to the provided URL with the provided job name.
+//
 // You can use just "host:port" or "ip:port" as url, in which case “http://” is added automatically.
 // Alternatively, include the schema in the URL.
 // However, do not include the “/metrics/jobs/…” part.
@@ -113,6 +128,7 @@ func New(url, job string) *Pusher {
 	}
 }
 
+
 // Push collects/gathers all metrics from all Collectors and Gatherers added to this Pusher.
 //
 // Then, it pushes them to the Pushgateway configured while creating this Pusher,
@@ -122,32 +138,37 @@ func New(url, job string) *Pusher {
 // All previously pushed metrics with the same job and other grouping labels will be replaced
 // with the metrics pushed by this call. (It uses HTTP method “PUT” to push to the Pushgateway.)
 //
-//
-// Push returns the first error encountered by any method call (including this one) in the lifetime
-// of the Pusher.
+// Push returns the first error encountered by any method call (including this one) in the lifetime of the Pusher.
 func (p *Pusher) Push() error {
 	return p.push(http.MethodPut)
 }
 
+
 // Add works like push, but only previously pushed metrics with the same name
-// (and the same job and other grouping labels) will be replaced. (It uses HTTP
-// method “POST” to push to the Pushgateway.)
+// (and the same job and other grouping labels) will be replaced.
+//
+// (It uses HTTP method “POST” to push to the Pushgateway.)
 func (p *Pusher) Add() error {
 	return p.push(http.MethodPost)
 }
 
-// Gatherer adds a Gatherer to the Pusher, from which metrics will be gathered
-// to push them to the Pushgateway. The gathered metrics must not contain a job
-// label of their own.
+
+
+
+// Gatherer adds a Gatherer to the Pusher, from which metrics will be gathered to push them to the Pushgateway.
+//
+// The gathered metrics must not contain a job label of their own.
 //
 // For convenience, this method returns a pointer to the Pusher itself.
+//
+//
 func (p *Pusher) Gatherer(g prometheus.Gatherer) *Pusher {
 	p.gatherers = append(p.gatherers, g)
 	return p
 }
 
-// Collector adds a Collector to the Pusher, from which metrics will be
-// collected to push them to the Pushgateway.
+
+// Collector adds a Collector to the Pusher, from which metrics will be collected to push them to the Pushgateway.
 //
 // The collected metrics must not contain a job label of their own.
 //
@@ -159,21 +180,30 @@ func (p *Pusher) Collector(c prometheus.Collector) *Pusher {
 	return p
 }
 
-// Grouping adds a label pair to the grouping key of the Pusher, replacing any
-// previously added label pair with the same label name. Note that setting any
-// labels in the grouping key that are already contained in the metrics to push
-// will lead to an error.
+// Grouping adds a label pair to the grouping key of the Pusher,
+// replacing any previously added label pair with the same label name.
+//
+// Grouping 将标签键值对添加到 p.grouping[] 中
+//
+//
+// Note that setting any labels in the grouping key that are already contained
+// in the metrics to push will lead to an error.
 //
 // For convenience, this method returns a pointer to the Pusher itself.
+//
+//
+//
 func (p *Pusher) Grouping(name, value string) *Pusher {
 
 	if p.error == nil {
 
+		// 检查是否是合法标签名
 		if !model.LabelName(name).IsValid() {
 			p.error = fmt.Errorf("grouping label has invalid name: %s", name)
 			return p
 		}
 
+		// 保存 <标签名, 标签值> 映射
 		p.grouping[name] = value
 	}
 
@@ -211,13 +241,17 @@ func (p *Pusher) Format(format expfmt.Format) *Pusher {
 	return p
 }
 
-// Delete sends a “DELETE” request to the Pushgateway configured while creating
-// this Pusher, using the configured job name and any added grouping labels as
-// grouping key. Any added Gatherers and Collectors added to this Pusher are
-// ignored by this method.
+
+
+// Delete sends a “DELETE” request to the Pushgateway configured while creating this Pusher,
 //
-// Delete returns the first error encountered by any method call (including this
-// one) in the lifetime of the Pusher.
+// using the configured job name and any added grouping labels as grouping key.
+//
+// Any added Gatherers and Collectors added to this Pusher are ignored by this method.
+//
+// Delete returns the first error encountered by any method call (including this one)
+// in the lifetime of the Pusher.
+
 func (p *Pusher) Delete() error {
 
 	if p.error != nil {
@@ -250,39 +284,41 @@ func (p *Pusher) push(method string) error {
 		return p.error
 	}
 
-	//
+	// 获取收集的 []*dto.MetricFamily
 	mfs, err := p.gatherers.Gather()
 	if err != nil {
 		return err
 	}
 
-
+	// 输出缓存、数据编码器
 	buf := &bytes.Buffer{}
 	enc := expfmt.NewEncoder(buf, p.expfmt)
 
 
 	// Check for pre-existing grouping labels:
 	for _, mf := range mfs {
-
+		// 数据检查：检查是否存在不合法的 label name
 		for _, m := range mf.GetMetric() {
-
 			for _, l := range m.GetLabel() {
 
+				// metric 不许包含 "job" 标签
 				if l.GetName() == "job" {
 					return fmt.Errorf("pushed metric %s (%s) already contains a job label", mf.GetName(), m)
 				}
 
+				// metric 不许包含 p.grouping 中的标签
 				if _, ok := p.grouping[l.GetName()]; ok {
 					return fmt.Errorf("pushed metric %s (%s) already contains grouping label %s", mf.GetName(), m, l.GetName())
 				}
-
 			}
-
 		}
+
+		// 逐个 dto.MetricFamily 的进行编码
 		enc.Encode(mf)
 	}
 
 
+	// 构造 http 请求
 	req, err := http.NewRequest(method, p.fullURL(), buf)
 	if err != nil {
 		return err
@@ -291,17 +327,22 @@ func (p *Pusher) push(method string) error {
 		req.SetBasicAuth(p.username, p.password)
 	}
 	req.Header.Set(contentTypeHeader, string(p.expfmt))
+
+	// 发送 http 请求
 	resp, err := p.client.Do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 
+
+	// 检查 http 响应
 	// Pushgateway 0.10+ responds with StatusOK, earlier versions with StatusAccepted.
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
 		body, _ := ioutil.ReadAll(resp.Body) // Ignore any further error as this is for an error message only.
 		return fmt.Errorf("unexpected status code %d while pushing to %s: %s", resp.StatusCode, p.fullURL(), body)
 	}
+
 
 	return nil
 }

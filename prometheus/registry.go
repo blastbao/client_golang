@@ -549,16 +549,21 @@ func (r *Registry) MustRegister(cs ...Collector) {
 }
 
 // Gather implements Gatherer.
+//
+// Registry 实现了 Gather() 接口，所以它可以作参数传递给 Pusher.Gatherer() 函数，
+// 使 Pusher 能够汇总 Metrics 并推送给 PushGateway。
+//
 func (r *Registry) Gather() ([]*dto.MetricFamily, error) {
 
-
 	var (
+
 		// 用于汇总 checked collectors 收集到的所有指标
 		checkedMetricChan   = make(chan Metric, capMetricChan)
+
 		// 用于汇总 unchecked collectors 收集到的所有指标
 		uncheckedMetricChan = make(chan Metric, capMetricChan)
 
-
+		//
 		metricHashes        = map[uint64]struct{}{}
 		wg                  sync.WaitGroup
 		errs                MultiError          // The collected errors to return in the end.
@@ -983,9 +988,13 @@ func (gs Gatherers) Gather() ([]*dto.MetricFamily, error) {
 	var (
 		// 用于存储来自多个 gatherer 的 []*metricFamily 的聚合后数据，[mfName]=> &dto.MetricFamily{ Metric: ... }
 		metricFamiliesByName = map[string]*dto.MetricFamily{}
+
+		//
 		metricHashes         = map[uint64]struct{}{}
 		errs                 MultiError // The collected errors to return in the end.
 	)
+
+
 
 	for i, g := range gs {
 
@@ -1000,6 +1009,7 @@ func (gs Gatherers) Gather() ([]*dto.MetricFamily, error) {
 				errs = append(errs, fmt.Errorf("[from Gatherer #%d] %s", i+1, err))
 			}
 		}
+
 
 		// 把 metricFamilies 中每个 metricFamily 都聚合存储到全局变量 metricFamiliesByName 上，
 		// 注：PushGateway 上有相同的聚合逻辑。

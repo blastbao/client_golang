@@ -441,8 +441,7 @@ func (s *noObjectivesSummary) Observe(v float64) {
 			break
 		}
 	}
-	// Increment count last as we take it as a signal that the observation
-	// is complete.
+	// Increment count last as we take it as a signal that the observation is complete.
 	atomic.AddUint64(&hotCounts.count, 1)
 }
 

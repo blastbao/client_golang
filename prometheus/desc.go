@@ -141,9 +141,7 @@ func NewDesc(fqName, help string, variableLabels []string, constLabels Labels) *
 
 	}
 
-
 	sort.Strings(labelNames)
-
 
 	// ... so that we can now add const label values in the order of their names.
 	for _, labelName := range labelNames {
