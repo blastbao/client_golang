@@ -406,7 +406,7 @@ func (h *histogram) Write(out *dto.Metric) error {
 
 	// count is contained unchanged in the lower 63 bits.
 	//
-	// 取出低 63 位的值，记为 count，它代表在冷热切换前，observe() 被调用的次数
+	// 取出低 63 位的值，记为 count，它代表在冷热切换前，observe() 被调用的次数 realCount
 	count := n & ((1 << 63) - 1)
 
 
@@ -468,36 +468,44 @@ func (h *histogram) Write(out *dto.Metric) error {
 		his.Bucket = append(his.Bucket, b)
 	}
 
-
 	// 构造返回值
 	out.Histogram = his
 	out.Label = h.labelPairs
 
-
-
-
-
-
 	// Finally add all the cold counts to the new hot counts and reset the cold counts.
 
 
-
-
+	// 冷热数据同步
+	//
+	// 冷热切换过程中，冷数据代表了当前一致的数据快照，热数据代表实时新增的数据，
+	// 在完成冷热切换之后，需要把冷数据同步到热数据上，这样热数据就代表实时的数据。
+	//
+	//
+	// 1. 同步 observe() 调用次数
+	// 更新 hotCounts.count，因为它是从 0 开始计数的（增量），需要加上历史累计值
 	atomic.AddUint64(&hotCounts.count, count)
+	// 重置 coldCounts.count，这样当它变为 hotCounts 时，是从 0 开始计数的
 	atomic.StoreUint64(&coldCounts.count, 0)
 
+
+	// 2. 同步采样样本数
 	for {
 		oldBits := atomic.LoadUint64(&hotCounts.sumBits)
 		newBits := math.Float64bits(math.Float64frombits(oldBits) + his.GetSampleSum())
+		// 更新 hotCounts.sumBits，因为它是从 0 开始计数的（增量），需要加上历史累计值
 		if atomic.CompareAndSwapUint64(&hotCounts.sumBits, oldBits, newBits) {
+			// 重置 coldCounts.sumBits，这样当它变为 hotCounts 时，是从 0 开始计数的
 			atomic.StoreUint64(&coldCounts.sumBits, 0)
 			break
 		}
 	}
 
-
+	// 3. 同步 bucket
+	// 遍历每个 bucket ，执行数据同步
 	for i := range h.upperBounds {
+		// 更新 hotCounts.buckets[i]，因为它是从 0 开始计数的，需要加上历史累计值
 		atomic.AddUint64(&hotCounts.buckets[i], atomic.LoadUint64(&coldCounts.buckets[i]))
+		// 重置 coldCounts.buckets[i]，这样当它变为 hotCounts 时，是从 0 开始计数的
 		atomic.StoreUint64(&coldCounts.buckets[i], 0)
 	}
 
