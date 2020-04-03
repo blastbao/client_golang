@@ -3,11 +3,8 @@
   <component name="ChangeListManager">
     <list default="true" id="2f05dd01-1935-4277-8dc3-4b5d91fd3bb8" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/prometheus/collector.go" beforeDir="false" afterPath="$PROJECT_DIR$/prometheus/collector.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/prometheus/counter.go" beforeDir="false" afterPath="$PROJECT_DIR$/prometheus/counter.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/prometheus/histogram.go" beforeDir="false" afterPath="$PROJECT_DIR$/prometheus/histogram.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/prometheus/metric.go" beforeDir="false" afterPath="$PROJECT_DIR$/prometheus/metric.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/prometheus/registry.go" beforeDir="false" afterPath="$PROJECT_DIR$/prometheus/registry.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/prometheus/vec.go" beforeDir="false" afterPath="$PROJECT_DIR$/prometheus/vec.go" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -17,34 +14,36 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/prometheus/metric.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="604">
+              <caret line="197" column="1" lean-forward="true" selection-start-line="197" selection-start-column="1" selection-end-line="197" selection-end-column="1" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/prometheus/gauge.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="4233">
+              <caret line="255" column="24" selection-start-line="255" selection-start-column="24" selection-end-line="255" selection-end-column="24" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/prometheus/go_collector.go">
+          <provider selected="true" editor-type-id="text-editor" />
+        </entry>
+      </file>
       <file pinned="false" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/prometheus/counter.go">
+        <entry file="file://$PROJECT_DIR$/prometheus/histogram.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="657">
-              <caret line="261" lean-forward="true" selection-start-line="261" selection-end-line="261" />
+            <state relative-caret-position="229">
+              <caret line="574" column="43" selection-start-line="574" selection-start-column="29" selection-end-line="574" selection-end-column="43" />
               <folding>
-                <element signature="e#613#710#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/examples/random/main.go">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-529">
-              <caret line="43" column="43" selection-start-line="43" selection-start-column="30" selection-end-line="43" selection-end-column="43" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/prometheus/desc.go">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="17">
-              <caret line="149" column="53" selection-start-line="149" selection-start-column="42" selection-end-line="149" selection-end-column="53" />
-              <folding>
-                <element signature="e#613#809#0" expanded="true" />
+                <element signature="e#613#771#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -53,51 +52,50 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/prometheus/collector.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="2414">
-              <caret line="142" column="13" lean-forward="true" selection-start-line="142" selection-start-column="13" selection-end-line="142" selection-end-column="13" />
+            <state relative-caret-position="496">
+              <caret line="164" column="5" selection-start-line="164" selection-start-column="5" selection-end-line="164" selection-end-column="5" />
             </state>
           </provider>
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/examples/simple/main.go">
-          <provider selected="true" editor-type-id="text-editor" />
+        <entry file="file:///usr/local/Cellar/go/1.14/libexec/src/sort/search.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="1564">
+              <caret line="92" column="15" selection-start-line="92" selection-start-column="15" selection-end-line="92" selection-end-column="15" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/prometheus/summary.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="1275">
+              <caret line="88" column="4" selection-start-line="88" selection-start-column="4" selection-end-line="88" selection-end-column="4" />
+            </state>
+          </provider>
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/prometheus/vec.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-2433">
-              <caret line="480" column="17" lean-forward="true" selection-start-line="480" selection-start-column="17" selection-end-line="480" selection-end-column="17" />
+            <state relative-caret-position="3179">
+              <caret line="192" column="20" selection-start-line="192" selection-start-column="20" selection-end-line="192" selection-end-column="20" />
             </state>
           </provider>
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/prometheus/internal/metric.go">
+        <entry file="file://$PROJECT_DIR$/../../prometheus/client_model/go/metrics.pb.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-199">
-              <caret line="44" column="69" lean-forward="true" selection-start-line="44" selection-start-column="69" selection-end-line="44" selection-end-column="69" />
+            <state relative-caret-position="311">
+              <caret line="325" column="5" selection-start-line="325" selection-start-column="5" selection-end-line="325" selection-end-column="5" />
             </state>
           </provider>
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/prometheus/promhttp/delegator.go">
-          <provider selected="true" editor-type-id="text-editor" />
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/prometheus/push/push.go">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-2450">
-              <caret line="157" column="5" lean-forward="true" selection-start-line="157" selection-start-column="5" selection-end-line="157" selection-end-column="5" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/prometheus/promhttp/http.go">
+        <entry file="file://$PROJECT_DIR$/prometheus/build_info.go">
           <provider selected="true" editor-type-id="text-editor" />
         </entry>
       </file>
@@ -116,6 +114,7 @@
       <find>WrapRegistererWith</find>
       <find>NewCounterVec</find>
       <find>GetMetricWith</find>
+      <find>hotCount</find>
     </findStrings>
     <dirStrings>
       <dir>$PROJECT_DIR$/prometheus</dir>
@@ -137,7 +136,6 @@
         <option value="$PROJECT_DIR$/prometheus/promauto/auto.go" />
         <option value="$PROJECT_DIR$/prometheus/internal/metric.go" />
         <option value="$PROJECT_DIR$/prometheus/gauge.go" />
-        <option value="$PROJECT_DIR$/prometheus/histogram.go" />
         <option value="$PROJECT_DIR$/prometheus/labels.go" />
         <option value="$PROJECT_DIR$/prometheus/vec_test.go" />
         <option value="$PROJECT_DIR$/prometheus/counter_test.go" />
@@ -145,15 +143,16 @@
         <option value="$PROJECT_DIR$/prometheus/graphite/bridge.go" />
         <option value="$PROJECT_DIR$/prometheus/desc.go" />
         <option value="$PROJECT_DIR$/prometheus/wrap.go" />
-        <option value="$PROJECT_DIR$/prometheus/metric.go" />
         <option value="$PROJECT_DIR$/prometheus/registry.go" />
         <option value="$PROJECT_DIR$/prometheus/collector.go" />
         <option value="$PROJECT_DIR$/prometheus/vec.go" />
         <option value="$PROJECT_DIR$/prometheus/counter.go" />
+        <option value="$PROJECT_DIR$/prometheus/metric.go" />
+        <option value="$PROJECT_DIR$/prometheus/histogram.go" />
       </list>
     </option>
   </component>
-  <component name="ProjectFrameBounds" fullScreen="true">
+  <component name="ProjectFrameBounds" extendedState="6" fullScreen="true">
     <option name="width" value="1680" />
     <option name="height" value="1050" />
   </component>
@@ -173,72 +172,7 @@
             <path>
               <item name="client_golang" type="b2602c69:ProjectViewProjectNode" />
               <item name="client_golang" type="462c0819:PsiDirectoryNode" />
-              <item name="api" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="client_golang" type="b2602c69:ProjectViewProjectNode" />
-              <item name="client_golang" type="462c0819:PsiDirectoryNode" />
-              <item name="api" type="462c0819:PsiDirectoryNode" />
               <item name="prometheus" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="client_golang" type="b2602c69:ProjectViewProjectNode" />
-              <item name="client_golang" type="462c0819:PsiDirectoryNode" />
-              <item name="api" type="462c0819:PsiDirectoryNode" />
-              <item name="prometheus" type="462c0819:PsiDirectoryNode" />
-              <item name="v1" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="client_golang" type="b2602c69:ProjectViewProjectNode" />
-              <item name="client_golang" type="462c0819:PsiDirectoryNode" />
-              <item name="examples" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="client_golang" type="b2602c69:ProjectViewProjectNode" />
-              <item name="client_golang" type="462c0819:PsiDirectoryNode" />
-              <item name="examples" type="462c0819:PsiDirectoryNode" />
-              <item name="random" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="client_golang" type="b2602c69:ProjectViewProjectNode" />
-              <item name="client_golang" type="462c0819:PsiDirectoryNode" />
-              <item name="examples" type="462c0819:PsiDirectoryNode" />
-              <item name="simple" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="client_golang" type="b2602c69:ProjectViewProjectNode" />
-              <item name="client_golang" type="462c0819:PsiDirectoryNode" />
-              <item name="prometheus" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="client_golang" type="b2602c69:ProjectViewProjectNode" />
-              <item name="client_golang" type="462c0819:PsiDirectoryNode" />
-              <item name="prometheus" type="462c0819:PsiDirectoryNode" />
-              <item name="graphite" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="client_golang" type="b2602c69:ProjectViewProjectNode" />
-              <item name="client_golang" type="462c0819:PsiDirectoryNode" />
-              <item name="prometheus" type="462c0819:PsiDirectoryNode" />
-              <item name="internal" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="client_golang" type="b2602c69:ProjectViewProjectNode" />
-              <item name="client_golang" type="462c0819:PsiDirectoryNode" />
-              <item name="prometheus" type="462c0819:PsiDirectoryNode" />
-              <item name="promauto" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="client_golang" type="b2602c69:ProjectViewProjectNode" />
-              <item name="client_golang" type="462c0819:PsiDirectoryNode" />
-              <item name="prometheus" type="462c0819:PsiDirectoryNode" />
-              <item name="promhttp" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="client_golang" type="b2602c69:ProjectViewProjectNode" />
-              <item name="client_golang" type="462c0819:PsiDirectoryNode" />
-              <item name="prometheus" type="462c0819:PsiDirectoryNode" />
-              <item name="push" type="462c0819:PsiDirectoryNode" />
             </path>
           </expand>
           <select />
@@ -267,10 +201,10 @@
     </option>
   </component>
   <component name="ToolWindowManager">
-    <frame x="0" y="0" width="1680" height="1050" extended-state="0" />
+    <frame x="0" y="0" width="1680" height="1050" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.26495728" />
+      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.27106228" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
@@ -295,9 +229,6 @@
     <option name="version" value="1" />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/prometheus/example_clustermanager_test.go">
-      <provider selected="true" editor-type-id="text-editor" />
-    </entry>
     <entry file="file://$PROJECT_DIR$/../../prometheus/client_golang/prometheus/gauge.go">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="1003">
@@ -337,9 +268,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/prometheus/gauge_test.go">
-      <provider selected="true" editor-type-id="text-editor" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/prometheus/go_collector.go">
       <provider selected="true" editor-type-id="text-editor" />
     </entry>
     <entry file="file://$PROJECT_DIR$/prometheus/go_collector_test.go">
@@ -398,13 +326,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/prometheus/summary.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-5983">
-          <caret line="88" column="4" selection-start-line="88" selection-start-column="4" selection-end-line="88" selection-end-column="4" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/prometheus/registry_test.go">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="490">
@@ -436,13 +357,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/../../prometheus/client_model/go/metrics.pb.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="7208">
-          <caret line="426" column="4" selection-start-line="426" selection-start-column="4" selection-end-line="426" selection-end-column="4" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/prometheus/timer.go">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="357">
@@ -450,20 +364,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/prometheus/build_info.go">
-      <provider selected="true" editor-type-id="text-editor" />
-    </entry>
     <entry file="file://$PROJECT_DIR$/prometheus/graphite/bridge.go">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="3978">
           <caret line="250" column="14" selection-start-line="250" selection-start-column="14" selection-end-line="250" selection-end-column="14" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/prometheus/gauge.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="4233">
-          <caret line="255" column="24" selection-start-line="255" selection-start-column="24" selection-end-line="255" selection-end-column="24" />
         </state>
       </provider>
     </entry>
@@ -474,13 +378,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/prometheus/histogram.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="8381">
-          <caret line="505" column="61" selection-start-line="505" selection-start-column="51" selection-end-line="505" selection-end-column="61" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/prometheus/fnv.go">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="476">
@@ -488,24 +385,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/prometheus/registry.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="534">
-          <caret line="817" column="34" selection-start-line="817" selection-start-column="34" selection-end-line="817" selection-end-column="34" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/../../prometheus/common/expfmt/text_create.go">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="-5927">
           <caret line="66" column="41" selection-start-line="66" selection-start-column="39" selection-end-line="66" selection-end-column="41" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/prometheus/metric.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="729">
-          <caret line="227" selection-start-line="227" selection-end-line="232" selection-end-column="1" />
         </state>
       </provider>
     </entry>
@@ -527,9 +410,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/api/prometheus/v1/api_test.go">
-      <provider selected="true" editor-type-id="text-editor" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/api/prometheus/v1/example_test.go">
       <provider selected="true" editor-type-id="text-editor" />
     </entry>
     <entry file="file://$PROJECT_DIR$/api/client.go">
@@ -567,9 +447,19 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/api/prometheus/v1/example_test.go">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/prometheus/registry.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1785">
+          <caret line="124" column="22" selection-start-line="124" selection-start-column="13" selection-end-line="124" selection-end-column="22" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/prometheus/desc.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="17">
+        <state relative-caret-position="2346">
           <caret line="149" column="53" selection-start-line="149" selection-start-column="42" selection-end-line="149" selection-end-column="53" />
           <folding>
             <element signature="e#613#809#0" expanded="true" />
@@ -577,26 +467,77 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/prometheus/vec.go">
+    <entry file="file://$PROJECT_DIR$/prometheus/counter.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-2433">
-          <caret line="480" column="17" lean-forward="true" selection-start-line="480" selection-start-column="17" selection-end-line="480" selection-end-column="17" />
+        <state relative-caret-position="1071">
+          <caret line="63" column="19" selection-start-line="63" selection-start-column="19" selection-end-line="63" selection-end-column="19" />
+          <folding>
+            <element signature="e#613#710#0" expanded="true" />
+          </folding>
         </state>
       </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/prometheus/gauge.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="4233">
+          <caret line="255" column="24" selection-start-line="255" selection-start-column="24" selection-end-line="255" selection-end-column="24" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/prometheus/go_collector.go">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file:///usr/local/Cellar/go/1.14/libexec/src/sort/search.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1564">
+          <caret line="92" column="15" selection-start-line="92" selection-start-column="15" selection-end-line="92" selection-end-column="15" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/prometheus/summary.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1275">
+          <caret line="88" column="4" selection-start-line="88" selection-start-column="4" selection-end-line="88" selection-end-column="4" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/prometheus/vec.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="3179">
+          <caret line="192" column="20" selection-start-line="192" selection-start-column="20" selection-end-line="192" selection-end-column="20" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/prometheus/build_info.go">
+      <provider selected="true" editor-type-id="text-editor" />
     </entry>
     <entry file="file://$PROJECT_DIR$/prometheus/collector.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="2414">
-          <caret line="142" column="13" lean-forward="true" selection-start-line="142" selection-start-column="13" selection-end-line="142" selection-end-column="13" />
+        <state relative-caret-position="496">
+          <caret line="164" column="5" selection-start-line="164" selection-start-column="5" selection-end-line="164" selection-end-column="5" />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/prometheus/counter.go">
+    <entry file="file://$PROJECT_DIR$/../../prometheus/client_model/go/metrics.pb.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="657">
-          <caret line="261" lean-forward="true" selection-start-line="261" selection-end-line="261" />
+        <state relative-caret-position="311">
+          <caret line="325" column="5" selection-start-line="325" selection-start-column="5" selection-end-line="325" selection-end-column="5" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/prometheus/metric.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="604">
+          <caret line="197" column="1" lean-forward="true" selection-start-line="197" selection-start-column="1" selection-end-line="197" selection-end-column="1" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/prometheus/histogram.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="229">
+          <caret line="574" column="43" selection-start-line="574" selection-start-column="29" selection-end-line="574" selection-end-column="43" />
           <folding>
-            <element signature="e#613#710#0" expanded="true" />
+            <element signature="e#613#771#0" expanded="true" />
           </folding>
         </state>
       </provider>

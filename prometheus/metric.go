@@ -97,6 +97,9 @@ type Opts struct {
 	// Only Name is mandatory(强制的), the others merely help structuring the name.
 	//
 	// Note that the fully-qualified name of the metric must be a valid Prometheus metric name.
+
+
+	// Namespace, Subsystem, Name 是指标的全限定名称的组成部分，这些部分使用下划线连接，仅仅 Name 是必须的
 	Namespace string
 	Subsystem string
 	Name      string
@@ -107,7 +110,7 @@ type Opts struct {
 	// [!]
 	// Metrics with the same fully-qualified name must have the same Help string.
 	//
-	// 帮助信息，相同的全限定名称，其帮助信息必须一样
+	// 帮助信息，同一个全限定名称，其帮助信息必须一样
 	Help string
 
 
@@ -125,11 +128,15 @@ type Opts struct {
 	// See also https://prometheus.io/docs/instrumenting/writing_exporters/#target-labels,-not-static-scraped-labels
 	//
 	//
-	// 常量标签用于为指标提供固定的标签，单个全限定名称，其常量标签集的所包含的标签名必须一致。
-	// 注意在大部分情况下，标签的值会变化，这些标签通常由指标矢量收集器（metric vector collector）来 处理，
-	// 例如CounterVec、GaugeVec、UntypedVec，而ConstLabels则仅用于特殊情况，例如：
+	// 常量标签用于为指标提供固定的标签，同一个全限定名称，其常量标签集的所包含的标签名必须一致。
+	//
+	// 常量标签一般很少使用。
+	//
+	//
+	// 注意，在大部分情况下，标签的值会变化，这些标签通常由指标矢量收集器（metric vector collector）来处理，
+	// 例如 CounterVec、GaugeVec、UntypedVec，而 ConstLabels 则仅用于特殊情况，例如：
 	// vector collector (like CounterVec, GaugeVec, UntypedVec).ConstLabels
-	// 1、在整个处理过程中，标签的值绝不会改变。这种标签例如运行中的二进制程序的修订版号
+	// 1、在整个处理过程中，标签的值绝不会改变。这种标签例如运行中的二进制程序的修订版号。
 	// 2、在具有多个收集器（collector）来收集相同全限定名称的指标的情况下，那么每个收集器收集的指标的常量标签的值必须有所不同
 	// 如果任何情况下，标签的值都不会改变，它可能更适合编码到全限定名称中。
 	ConstLabels Labels
