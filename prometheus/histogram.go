@@ -213,52 +213,51 @@ func NewHistogram(opts HistogramOpts) Histogram {
 func newHistogram(desc *Desc, opts HistogramOpts, labelValues ...string) Histogram {
 
 
+	// variable 标签数目检查
 	if len(desc.variableLabels) != len(labelValues) {
 		panic(makeInconsistentCardinalityError(desc.fqName, desc.variableLabels, labelValues))
 	}
 
+	// variable 标签中不可以包含 "le" 标签
 	for _, n := range desc.variableLabels {
 		if n == bucketLabel {
 			panic(errBucketLabelNotAllowed)
 		}
 	}
 
-
+	// const 标签中不可以包含 "le" 标签
 	for _, lp := range desc.constLabelPairs {
 		if lp.GetName() == bucketLabel {
 			panic(errBucketLabelNotAllowed)
 		}
 	}
 
-
+	// 如果指定了 buckets 就覆盖掉默认 buckets
 	if len(opts.Buckets) == 0 {
 		opts.Buckets = DefBuckets
 	}
 
-
 	h := &histogram{
 		desc:        desc,
-		upperBounds: opts.Buckets,
+		upperBounds: opts.Buckets, //[!] 区间上边界
 		labelPairs:  makeLabelPairs(desc, labelValues),
 		counts:      [2]*histogramCounts{{}, {}},
 		now:         time.Now,
 	}
 
+	// 边界合法性检查
 	for i, upperBound := range h.upperBounds {
-
 		if i < len(h.upperBounds)-1 {
-
+			// 增序检查
 			if upperBound >= h.upperBounds[i+1] {
 				panic(fmt.Errorf("histogram buckets must be in increasing order: %f >= %f", upperBound, h.upperBounds[i+1]))
 			}
-
 		} else {
-
+			// 不要显式的声明 "+Inf" 边界
 			if math.IsInf(upperBound, +1) {
 				// The +Inf bucket is implicit. Remove it here.
 				h.upperBounds = h.upperBounds[:i]
 			}
-
 		}
 	}
 
@@ -269,7 +268,9 @@ func newHistogram(desc *Desc, opts HistogramOpts, labelValues ...string) Histogr
 	h.counts[1].buckets = make([]uint64, len(h.upperBounds))
 	h.exemplars = make([]atomic.Value, len(h.upperBounds)+1)
 
-	h.init(h) // Init self-collection.
+	// Init self-collection.
+	h.init(h)
+
 	return h
 }
 
@@ -290,6 +291,17 @@ type histogramCounts struct {
 	// the observed values
 	buckets []uint64
 }
+
+
+
+
+// histogram 并不会保存数据采样点值，每个 bucket 只有个记录样本数的 counter（float64），
+// 即 histogram 存储的是区间的样本数统计值，
+// 因此客户端性能开销相比 Counter 和 Gauge 而言没有明显改变，适合高并发的数据收集。
+
+
+
+
 
 type histogram struct {
 
@@ -345,8 +357,10 @@ type histogram struct {
 	// The observations all work on the hot counts, and the cold counts are used in the read path.
 	counts [2]*histogramCounts
 
-
+	// 区间上边界
 	upperBounds []float64
+
+	//
 	labelPairs  []*dto.LabelPair
 	exemplars   []atomic.Value // One more than buckets (to include +Inf), each a *dto.Exemplar.
 

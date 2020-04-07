@@ -32,24 +32,50 @@ import (
 // summary.
 const quantileLabel = "quantile"
 
-// A Summary captures individual observations from an event or sample stream and
-// summarizes them in a manner similar to traditional summary statistics: 1. sum
-// of observations, 2. observation count, 3. rank estimations.
+
+
+
+
+// A Summary captures individual observations from an event or sample stream
+// and summarizes them in a manner similar to traditional summary statistics:
+// 	1. sum of observations,
+// 	2. observation count,
+// 	3. rank estimations.
 //
-// A typical use-case is the observation of request latencies. By default, a
-// Summary provides the median, the 90th and the 99th percentile of the latency
-// as rank estimations. However, the default behavior will change in the
-// upcoming v1.0.0 of the library. There will be no rank estimations at all by
-// default. For a sane transition, it is recommended to set the desired rank
-// estimations explicitly.
+// Summary 捕获事件或样本流中的个别观察结果，并以类似于传统摘要统计的方式进行摘要:
+//
+//  1. 观察结果总和
+//  2. 观察计数
+//  3. 秩估计
+//
+//
+//
+//
+// A typical use-case is the observation of request latencies.
+//
+// By default, a Summary provides the median, the 90th and the 99th percentile of the latency as rank estimations.
+//
+// However, the default behavior will change in the upcoming v1.0.0 of the library.
+//
+// There will be no rank estimations at all by default.
+//
+// For a sane transition, it is recommended to set the desired rank estimations explicitly.
+//
+//
+//
 //
 // Note that the rank estimations cannot be aggregated in a meaningful way with
-// the Prometheus query language (i.e. you cannot average or add them). If you
-// need aggregatable quantiles (e.g. you want the 99th percentile latency of all
-// queries served across all instances of a service), consider the Histogram
-// metric type. See the Prometheus documentation for more details.
+// the Prometheus query language (i.e. you cannot average or add them).
+//
+// If you need aggregatable quantiles (e.g. you want the 99th percentile latency of all
+// queries served across all instances of a service), consider the Histogram metric type.
+//
+// See the Prometheus documentation for more details.
 //
 // To create Summary instances, use NewSummary.
+//
+//
+
 type Summary interface {
 	Metric
 	Collector
@@ -80,29 +106,47 @@ const (
 // a help string and to explicitly set the Objectives field to the desired value
 // as the default value will change in the upcoming v1.0.0 of the library.
 type SummaryOpts struct {
+
+
+
+
+
+
 	// Namespace, Subsystem, and Name are components of the fully-qualified
-	// name of the Summary (created by joining these components with
-	// "_"). Only Name is mandatory, the others merely help structuring the
-	// name. Note that the fully-qualified name of the Summary must be a
-	// valid Prometheus metric name.
+	// name of the Summary (created by joining these components with "_").
+	//
+	// Only Name is mandatory, the others merely help structuring the name.
+	//
+	// Note that the fully-qualified name of the Summary must be a valid Prometheus metric name.
 	Namespace string
 	Subsystem string
 	Name      string
 
+
+
+
+
 	// Help provides information about this Summary.
 	//
-	// Metrics with the same fully-qualified name must have the same Help
-	// string.
+	// Metrics with the same fully-qualified name must have the same Help string.
 	Help string
 
-	// ConstLabels are used to attach fixed labels to this metric. Metrics
-	// with the same fully-qualified name must have the same label names in
-	// their ConstLabels.
+
+
+
+	// ConstLabels are used to attach fixed labels to this metric.
+	//
+	// Metrics with the same fully-qualified name must have the same label names in their ConstLabels.
+	//
+	//
+	//
 	//
 	// Due to the way a Summary is represented in the Prometheus text format
 	// and how it is handled by the Prometheus server internally, “quantile”
-	// is an illegal label name. Construction of a Summary or SummaryVec
-	// will panic if this label name is used in ConstLabels.
+	// is an illegal label name.
+	//
+	//
+	// Construction of a Summary or SummaryVec will panic if this label name is used in ConstLabels.
 	//
 	// ConstLabels are only used rarely. In particular, do not use them to
 	// attach the same labels to all your metrics. Those use cases are
